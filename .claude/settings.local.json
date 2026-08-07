@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze *)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(dart format *)",
+      "Bash(flutter pub *)",
+      "Bash(nohup flutter run -d chrome --web-port=8765)",
+      "Bash(disown)",
+      "Bash(echo \"launched, pid $!\")",
+      "Bash([ -f \"$LOG\" ])",
+      "Read(//c/Users/User/AppData/Local/Temp/claude/c--Users-User-Downloads-equilibra--2---1--equilibra/ff96729f-d1d9-40e0-ba5f-1fe265008145/scratchpad/**)",
+      "Bash(flutter emulators *)",
+      "Bash(nohup flutter emulators --launch Pixel_6)",
+      "Bash(echo \"emulator launch triggered, pid $!\")",
+      "Bash(flutter devices *)",
+      "Bash(> \"/c/Users/User/AppData/Local/Temp/claude/c--Users-User-Downloads-equilibra--2---1--equilibra/ff96729f-d1d9-40e0-ba5f-1fe265008145/scratchpad/flutter_run_android.log\")",
+      "Bash(nohup flutter run -d emulator-5554)",
+      "Bash(grep -n \"scrollDirection: Axis.horizontal\\\\|TextField\\(\\\\|TextFormField\\(\\\\|Wrap\\(\\\\|child: Row\\(\\\\|children: \\\\[$\" lib/pages/emotional_record/emotional_record_widget.dart)",
+      "Bash(flutter run *)",
+      "Bash(taskkill //F //IM dart.exe //T)",
+      "Bash(taskkill //F //IM java.exe //T)",
+      "Bash(flutter clean *)"
+    ]
+  }
+}

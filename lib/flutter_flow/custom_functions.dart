@@ -1,0 +1,12 @@
+export '/custom_code/functions/most_frequent_emotion.dart';
+export '/custom_code/functions/average_intensity.dart';
+export '/custom_code/functions/average_intensity_label.dart';
+export '/custom_code/functions/format_short_name.dart';
+export '/custom_code/functions/get_initials.dart';
+export '/custom_code/functions/records_this_week.dart';
+export '/custom_code/functions/records_per_weekday.dart';
+export '/custom_code/functions/average_intensity_per_weekday.dart';
+export '/custom_code/functions/emotion_frequency.dart';
+export '/custom_code/functions/behavior_frequency.dart';
+export '/custom_code/functions/positive_emotion_percentage.dart';
+export '/custom_code/functions/negative_emotion_percentage.dart';
