@@ -781,7 +781,11 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.center,
                                           children: [
-                                            Column(
+                                            InkWell(
+                                              onTap: () async {
+                                                context.goNamed(HomeScreenWidget.routeName);
+                                              },
+                                              child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               mainAxisAlignment:
                                                   MainAxisAlignment.start,
@@ -834,7 +838,12 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                 ),
                                               ].divide(SizedBox(height: 4.0)),
                                             ),
-                                            Column(
+                                            ),
+                                            InkWell(
+                                              onTap: () async {
+                                                context.goNamed(EmotionalRecordWidget.routeName);
+                                              },
+                                              child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               mainAxisAlignment:
                                                   MainAxisAlignment.start,
@@ -887,7 +896,12 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                 ),
                                               ].divide(SizedBox(height: 4.0)),
                                             ),
-                                            Column(
+                                            ),
+                                            InkWell(
+                                              onTap: () async {
+                                                context.goNamed(WeeklyProgressWidget.routeName);
+                                              },
+                                              child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               mainAxisAlignment:
                                                   MainAxisAlignment.start,
@@ -940,7 +954,12 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                 ),
                                               ].divide(SizedBox(height: 4.0)),
                                             ),
-                                            Column(
+                                            ),
+                                            InkWell(
+                                              onTap: () async {
+                                                context.goNamed(RegulationToolsWidget.routeName);
+                                              },
+                                              child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               mainAxisAlignment:
                                                   MainAxisAlignment.start,
@@ -993,7 +1012,12 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                 ),
                                               ].divide(SizedBox(height: 4.0)),
                                             ),
-                                            Column(
+                                            ),
+                                            InkWell(
+                                              onTap: () async {
+                                                context.goNamed(UserProfileWidget.routeName);
+                                              },
+                                              child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               mainAxisAlignment:
                                                   MainAxisAlignment.start,
@@ -1046,6 +1070,7 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                 ),
                                               ].divide(SizedBox(height: 4.0)),
                                             ),
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -1068,3 +1093,4 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
     );
   }
 }
+
