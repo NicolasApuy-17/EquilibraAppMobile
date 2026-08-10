@@ -95,6 +95,7 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
         FFRoute(
           name: EmotionalRecordWidget.routeName,
           path: EmotionalRecordWidget.routePath,
+          requireAuth: true,
           builder: (context, params) => EmotionalRecordWidget(),
         ),
         FFRoute(
@@ -118,6 +119,7 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
         FFRoute(
           name: RegulationToolsWidget.routeName,
           path: RegulationToolsWidget.routePath,
+          requireAuth: true,
           builder: (context, params) => RegulationToolsWidget(),
         ),
         FFRoute(
@@ -165,11 +167,13 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
         FFRoute(
           name: UserProfileWidget.routeName,
           path: UserProfileWidget.routePath,
+          requireAuth: true,
           builder: (context, params) => UserProfileWidget(),
         ),
         FFRoute(
           name: WeeklyProgressWidget.routeName,
           path: WeeklyProgressWidget.routePath,
+          requireAuth: true,
           builder: (context, params) => WeeklyProgressWidget(),
         ),
         FFRoute(

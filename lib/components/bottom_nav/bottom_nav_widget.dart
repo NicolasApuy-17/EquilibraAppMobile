@@ -1,4 +1,5 @@
 import '/components/nav_item/nav_item_widget.dart';
+import '/index.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
@@ -40,6 +41,7 @@ class _BottomNavWidgetState extends State<BottomNavWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final currentRoute = getCurrentRoute(context);
     return Container(
       decoration: BoxDecoration(
         color: FlutterFlowTheme.of(context).secondaryBackground,
@@ -74,7 +76,7 @@ class _BottomNavWidgetState extends State<BottomNavWidget> {
                           size: 24.0,
                         ),
                         target: 'home_screen',
-                        selected: false,
+                        selected: currentRoute == HomeScreenWidget.routePath,
                       ),
                     ),
                     wrapWithModel(
@@ -88,7 +90,8 @@ class _BottomNavWidgetState extends State<BottomNavWidget> {
                           size: 24.0,
                         ),
                         target: 'emotional_record',
-                        selected: true,
+                        selected:
+                            currentRoute == EmotionalRecordWidget.routePath,
                       ),
                     ),
                     wrapWithModel(
@@ -102,7 +105,8 @@ class _BottomNavWidgetState extends State<BottomNavWidget> {
                           size: 24.0,
                         ),
                         target: 'weekly_progress',
-                        selected: false,
+                        selected:
+                            currentRoute == WeeklyProgressWidget.routePath,
                       ),
                     ),
                     wrapWithModel(
@@ -116,7 +120,8 @@ class _BottomNavWidgetState extends State<BottomNavWidget> {
                           size: 24.0,
                         ),
                         target: 'regulation_tools',
-                        selected: false,
+                        selected:
+                            currentRoute == RegulationToolsWidget.routePath,
                       ),
                     ),
                     wrapWithModel(
@@ -130,7 +135,7 @@ class _BottomNavWidgetState extends State<BottomNavWidget> {
                           size: 24.0,
                         ),
                         target: 'user_profile',
-                        selected: false,
+                        selected: currentRoute == UserProfileWidget.routePath,
                       ),
                     ),
                   ],

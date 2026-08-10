@@ -10,3 +10,4 @@ export '/custom_code/functions/emotion_frequency.dart';
 export '/custom_code/functions/behavior_frequency.dart';
 export '/custom_code/functions/positive_emotion_percentage.dart';
 export '/custom_code/functions/negative_emotion_percentage.dart';
+export '/custom_code/functions/calculate_streak.dart';

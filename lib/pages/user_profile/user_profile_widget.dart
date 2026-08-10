@@ -11,6 +11,7 @@ import '/flutter_flow/flutter_flow_widgets.dart';
 import 'dart:ui';
 import '/flutter_flow/custom_functions.dart' as functions;
 import '/index.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -43,6 +44,107 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
     _model.dispose();
 
     super.dispose();
+  }
+
+  Future<void> _showReminderDialog() async {
+    final docRef = UserPrefsRecord.collection.doc(currentUserUid);
+    var enabled = false;
+    try {
+      final snapshot = await docRef.get();
+      if (snapshot.exists) {
+        enabled = UserPrefsRecord.fromSnapshot(snapshot).dailyReminderEnabled;
+      }
+    } catch (_) {
+      // Sin preferencia guardada todavía: se asume desactivado.
+    }
+
+    if (!context.mounted) return;
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: Text('Recordatorios'),
+              content: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Recibir un recordatorio diario para registrar cómo te sientes.',
+                    ),
+                  ),
+                  Switch(
+                    value: enabled,
+                    onChanged: (value) async {
+                      setDialogState(() => enabled = value);
+                      await docRef.set(
+                        createUserPrefsRecordData(
+                          name: currentUserDisplayName,
+                          email: currentUserEmail,
+                          dailyReminderEnabled: value,
+                        ),
+                        SetOptions(merge: true),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text('Cerrar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showPrivacyDialog() async {
+    return showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text('Privacidad y Datos'),
+          content: Text(
+            'Tus registros emocionales, tareas y preferencias están asociados '
+            'únicamente a tu cuenta y protegidos por reglas de acceso: solo tú '
+            'puedes leer o modificar tu propia información. Nadie más puede '
+            'ver tus registros.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('Entendido'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showGoalsComingSoonDialog() async {
+    return showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text('Mis Objetivos'),
+          content: Text(
+            'Próximamente podrás definir metas sencillas de autocuidado. '
+            'Esta sección todavía está en desarrollo.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('Entendido'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -206,7 +308,11 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                                       AlignmentDirectional(
                                                           0.0, 0.0),
                                                   child: Text(
-                                                    'V',
+                                                    functions.getInitials(
+                                                        currentUserDisplayName
+                                                                .isNotEmpty
+                                                            ? currentUserDisplayName
+                                                            : currentUserEmail),
                                                     textAlign: TextAlign.center,
                                                     maxLines: 1,
                                                     style: FlutterFlowTheme.of(
@@ -251,7 +357,10 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                                 CrossAxisAlignment.center,
                                             children: [
                                               Text(
-                                                '${FFAppState().userName} García',
+                                                currentUserDisplayName
+                                                        .isNotEmpty
+                                                    ? currentUserDisplayName
+                                                    : 'Usuario',
                                                 style: FlutterFlowTheme.of(
                                                         context)
                                                     .titleLarge
@@ -281,7 +390,7 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                                     ),
                                               ),
                                               Text(
-                                                'valeria.g@ejemplo.com',
+                                                currentUserEmail,
                                                 style: FlutterFlowTheme.of(
                                                         context)
                                                     .bodyMedium
@@ -361,7 +470,11 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                                     updateCallback: () =>
                                                         safeSetState(() {}),
                                                     child: ProfileStatWidget(
-                                                      value: '12',
+                                                      value: functions
+                                                          .calculateStreak(
+                                                              userProfileRecordsRecordList
+                                                                  .toList())
+                                                          .toString(),
                                                       label: 'Días seguidos',
                                                     ),
                                                   ),
@@ -436,46 +549,67 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                       ),
                                     ),
                                   ),
-                                  wrapWithModel(
-                                    model: _model.profileMenuItemModel1,
-                                    updateCallback: () => safeSetState(() {}),
-                                    child: ProfileMenuItemWidget(
-                                      icon: Icon(
-                                        Icons.notifications_active_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 22.0,
+                                  InkWell(
+                                    splashColor: Colors.transparent,
+                                    focusColor: Colors.transparent,
+                                    hoverColor: Colors.transparent,
+                                    highlightColor: Colors.transparent,
+                                    onTap: _showReminderDialog,
+                                    child: wrapWithModel(
+                                      model: _model.profileMenuItemModel1,
+                                      updateCallback: () => safeSetState(() {}),
+                                      child: ProfileMenuItemWidget(
+                                        icon: Icon(
+                                          Icons.notifications_active_rounded,
+                                          color: FlutterFlowTheme.of(context)
+                                              .primary,
+                                          size: 22.0,
+                                        ),
+                                        title: 'Recordatorios',
+                                        subtitle: 'Configura alertas diarias',
                                       ),
-                                      title: 'Recordatorios',
-                                      subtitle: 'Configura alertas diarias',
                                     ),
                                   ),
-                                  wrapWithModel(
-                                    model: _model.profileMenuItemModel2,
-                                    updateCallback: () => safeSetState(() {}),
-                                    child: ProfileMenuItemWidget(
-                                      icon: Icon(
-                                        Icons.security_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 22.0,
+                                  InkWell(
+                                    splashColor: Colors.transparent,
+                                    focusColor: Colors.transparent,
+                                    hoverColor: Colors.transparent,
+                                    highlightColor: Colors.transparent,
+                                    onTap: _showPrivacyDialog,
+                                    child: wrapWithModel(
+                                      model: _model.profileMenuItemModel2,
+                                      updateCallback: () => safeSetState(() {}),
+                                      child: ProfileMenuItemWidget(
+                                        icon: Icon(
+                                          Icons.security_rounded,
+                                          color: FlutterFlowTheme.of(context)
+                                              .primary,
+                                          size: 22.0,
+                                        ),
+                                        title: 'Privacidad y Datos',
+                                        subtitle: 'Gestiona tu seguridad',
                                       ),
-                                      title: 'Privacidad y Datos',
-                                      subtitle: 'Gestiona tu seguridad',
                                     ),
                                   ),
-                                  wrapWithModel(
-                                    model: _model.profileMenuItemModel3,
-                                    updateCallback: () => safeSetState(() {}),
-                                    child: ProfileMenuItemWidget(
-                                      icon: Icon(
-                                        Icons.favorite_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 22.0,
+                                  InkWell(
+                                    splashColor: Colors.transparent,
+                                    focusColor: Colors.transparent,
+                                    hoverColor: Colors.transparent,
+                                    highlightColor: Colors.transparent,
+                                    onTap: _showGoalsComingSoonDialog,
+                                    child: wrapWithModel(
+                                      model: _model.profileMenuItemModel3,
+                                      updateCallback: () => safeSetState(() {}),
+                                      child: ProfileMenuItemWidget(
+                                        icon: Icon(
+                                          Icons.favorite_rounded,
+                                          color: FlutterFlowTheme.of(context)
+                                              .primary,
+                                          size: 22.0,
+                                        ),
+                                        title: 'Mis Objetivos',
+                                        subtitle: 'Metas de autocuidado',
                                       ),
-                                      title: 'Mis Objetivos',
-                                      subtitle: 'Metas de autocuidado',
                                     ),
                                   ),
                                   Container(
@@ -554,8 +688,46 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                     hoverColor: Colors.transparent,
                                     highlightColor: Colors.transparent,
                                     onTap: () async {
-                                      context.goNamed(
-                                          WelcomeScreenWidget.routeName);
+                                      final confirmDialogResponse =
+                                          await showDialog<bool>(
+                                                context: context,
+                                                builder: (alertDialogContext) {
+                                                  return AlertDialog(
+                                                    title:
+                                                        Text('Cerrar sesión'),
+                                                    content: Text(
+                                                        '¿Deseas salir de tu cuenta?'),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                                alertDialogContext,
+                                                                false),
+                                                        child: Text('Cancelar'),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                                alertDialogContext,
+                                                                true),
+                                                        child: Text(
+                                                            'Cerrar sesión'),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              ) ??
+                                              false;
+                                      if (!confirmDialogResponse) return;
+
+                                      GoRouter.of(context).prepareAuthEvent();
+                                      await authManager.signOut();
+                                      if (!context.mounted) return;
+                                      GoRouter.of(context)
+                                          .clearRedirectLocation();
+                                      context.goNamedAuth(
+                                          TestScreenWidget.routeName,
+                                          context.mounted);
                                     },
                                     child: wrapWithModel(
                                       model: _model.buttonModel,

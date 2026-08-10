@@ -22,16 +22,4 @@ class FFAppState extends ChangeNotifier {
     callback();
     notifyListeners();
   }
-
-  String _userName = 'Valeria';
-  String get userName => _userName;
-  set userName(String value) {
-    _userName = value;
-  }
-
-  int _recordsCount = 24;
-  int get recordsCount => _recordsCount;
-  set recordsCount(int value) {
-    _recordsCount = value;
-  }
 }
