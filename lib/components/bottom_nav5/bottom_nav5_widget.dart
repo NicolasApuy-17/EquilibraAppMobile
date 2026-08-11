@@ -60,85 +60,83 @@ class _BottomNav5WidgetState extends State<BottomNav5Widget> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    wrapWithModel(
-                      model: _model.navItemModel1,
-                      updateCallback: () => safeSetState(() {}),
-                      child: NavItemWidget(
-                        label: 'Inicio',
-                        icon: Icon(
-                          Icons.home_rounded,
-                          color: FlutterFlowTheme.of(context).primaryText,
-                          size: 24.0,
-                        ),
-                        target: 'home_screen',
-                        selected: currentRoute == HomeScreenWidget.routePath,
-                      ),
+                child: wrapWithModel(
+                  model: _model.navItemModel1,
+                  updateCallback: () => safeSetState(() {}),
+                  child: NavItemWidget(
+                    label: 'Inicio',
+                    icon: Icon(
+                      Icons.home_rounded,
+                      color: FlutterFlowTheme.of(context).primaryText,
+                      size: 24.0,
                     ),
-                    wrapWithModel(
-                      model: _model.navItemModel2,
-                      updateCallback: () => safeSetState(() {}),
-                      child: NavItemWidget(
-                        label: 'Registrar',
-                        icon: Icon(
-                          Icons.add_circle_outline_rounded,
-                          color: FlutterFlowTheme.of(context).primaryText,
-                          size: 24.0,
-                        ),
-                        target: 'emotional_record',
-                        selected:
-                            currentRoute == EmotionalRecordWidget.routePath,
-                      ),
+                    target: 'home_screen',
+                    selected: currentRoute == HomeScreenWidget.routePath,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: wrapWithModel(
+                  model: _model.navItemModel2,
+                  updateCallback: () => safeSetState(() {}),
+                  child: NavItemWidget(
+                    label: 'Registrar',
+                    icon: Icon(
+                      Icons.add_circle_outline_rounded,
+                      color: FlutterFlowTheme.of(context).primaryText,
+                      size: 24.0,
                     ),
-                    wrapWithModel(
-                      model: _model.navItemModel3,
-                      updateCallback: () => safeSetState(() {}),
-                      child: NavItemWidget(
-                        label: 'Progreso',
-                        icon: Icon(
-                          Icons.bar_chart_rounded,
-                          color: FlutterFlowTheme.of(context).primaryText,
-                          size: 24.0,
-                        ),
-                        target: 'weekly_progress',
-                        selected:
-                            currentRoute == WeeklyProgressWidget.routePath,
-                      ),
+                    target: 'emotional_record',
+                    selected: currentRoute == EmotionalRecordWidget.routePath,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: wrapWithModel(
+                  model: _model.navItemModel3,
+                  updateCallback: () => safeSetState(() {}),
+                  child: NavItemWidget(
+                    label: 'Progreso',
+                    icon: Icon(
+                      Icons.bar_chart_rounded,
+                      color: FlutterFlowTheme.of(context).primaryText,
+                      size: 24.0,
                     ),
-                    wrapWithModel(
-                      model: _model.navItemModel4,
-                      updateCallback: () => safeSetState(() {}),
-                      child: NavItemWidget(
-                        label: 'Regularme',
-                        icon: Icon(
-                          Icons.self_improvement_rounded,
-                          color: FlutterFlowTheme.of(context).primaryText,
-                          size: 24.0,
-                        ),
-                        target: 'regulation_tools',
-                        selected:
-                            currentRoute == RegulationToolsWidget.routePath,
-                      ),
+                    target: 'weekly_progress',
+                    selected: currentRoute == WeeklyProgressWidget.routePath,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: wrapWithModel(
+                  model: _model.navItemModel4,
+                  updateCallback: () => safeSetState(() {}),
+                  child: NavItemWidget(
+                    label: 'Regularme',
+                    icon: Icon(
+                      Icons.self_improvement_rounded,
+                      color: FlutterFlowTheme.of(context).primaryText,
+                      size: 24.0,
                     ),
-                    wrapWithModel(
-                      model: _model.navItemModel5,
-                      updateCallback: () => safeSetState(() {}),
-                      child: NavItemWidget(
-                        label: 'Perfil',
-                        icon: Icon(
-                          Icons.person_rounded,
-                          color: FlutterFlowTheme.of(context).primaryText,
-                          size: 24.0,
-                        ),
-                        target: 'user_profile',
-                        selected: currentRoute == UserProfileWidget.routePath,
-                      ),
+                    target: 'regulation_tools',
+                    selected: currentRoute == RegulationToolsWidget.routePath,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: wrapWithModel(
+                  model: _model.navItemModel5,
+                  updateCallback: () => safeSetState(() {}),
+                  child: NavItemWidget(
+                    label: 'Perfil',
+                    icon: Icon(
+                      Icons.person_rounded,
+                      color: FlutterFlowTheme.of(context).primaryText,
+                      size: 24.0,
                     ),
-                  ],
+                    target: 'user_profile',
+                    selected: currentRoute == UserProfileWidget.routePath,
+                  ),
                 ),
               ),
             ],

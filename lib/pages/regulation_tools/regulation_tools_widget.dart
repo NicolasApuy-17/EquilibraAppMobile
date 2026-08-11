@@ -28,18 +28,54 @@ class _RegulationToolsWidgetState extends State<RegulationToolsWidget> {
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
+  bool _showSearch = false;
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     _model = createModel(context, () => RegulationToolsModel());
+    _searchController.addListener(() {
+      safeSetState(
+          () => _searchQuery = _searchController.text.trim().toLowerCase());
+    });
   }
 
   @override
   void dispose() {
     _model.dispose();
+    _searchController.dispose();
 
     super.dispose();
   }
+
+  bool _matchesSearch(String title, String subtitle) {
+    if (_searchQuery.isEmpty) {
+      return true;
+    }
+    return title.toLowerCase().contains(_searchQuery) ||
+        subtitle.toLowerCase().contains(_searchQuery);
+  }
+
+  static const _kExercises = [
+    ['Técnica 5-4-3-2-1', 'Reconecta con tus 5 sentidos, paso a paso.'],
+    ['Respiración guiada', 'Inhala, mantén y exhala siguiendo el círculo.'],
+    [
+      'Respiración cuadrada',
+      'Sigue el punto alrededor del cuadrado (4-4-4-4).'
+    ],
+    ['Encuentra el color', 'Localiza objetos de un color a tu alrededor.'],
+    ['Atención auditiva', 'Sonidos relajantes: lluvia, bosque, mar o viento.'],
+    ['Vibración consciente', 'Vibraciones suaves para favorecer la calma.'],
+    [
+      'Observación consciente',
+      'Encuentra detalles específicos en una escena.'
+    ],
+  ];
+
+  bool get _hasAnyMatch =>
+      _kExercises.any((pair) => _matchesSearch(pair[0], pair[1]));
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +137,7 @@ class _RegulationToolsWidgetState extends State<RegulationToolsWidget> {
                                               size: 24.0,
                                             ),
                                             onPressed: () async {
-                                              context.pop();
+                                              context.safePop();
                                             },
                                           ),
                                           FlutterFlowIconButton(
@@ -109,18 +145,99 @@ class _RegulationToolsWidgetState extends State<RegulationToolsWidget> {
                                             buttonSize: 40.0,
                                             fillColor: Colors.transparent,
                                             icon: Icon(
-                                              Icons.search_rounded,
+                                              _showSearch
+                                                  ? Icons.close_rounded
+                                                  : Icons.search_rounded,
                                               color:
                                                   FlutterFlowTheme.of(context)
                                                       .primaryText,
                                               size: 24.0,
                                             ),
                                             onPressed: () {
-                                              print('IconButton pressed ...');
+                                              safeSetState(() {
+                                                _showSearch = !_showSearch;
+                                                if (!_showSearch) {
+                                                  _searchController.clear();
+                                                }
+                                              });
                                             },
                                           ),
                                         ],
                                       ),
+                                      if (_showSearch) ...[
+                                        Container(
+                                          height: 12.0,
+                                        ),
+                                        Container(
+                                          height: 44.0,
+                                          decoration: BoxDecoration(
+                                            color: FlutterFlowTheme.of(context)
+                                                .secondaryBackground,
+                                            borderRadius:
+                                                BorderRadius.circular(12.0),
+                                            border: Border.all(
+                                              color: FlutterFlowTheme.of(
+                                                      context)
+                                                  .alternate,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Padding(
+                                                padding: EdgeInsetsDirectional
+                                                    .fromSTEB(
+                                                        12.0, 0.0, 8.0, 0.0),
+                                                child: Icon(
+                                                  Icons.search_rounded,
+                                                  color: FlutterFlowTheme.of(
+                                                          context)
+                                                      .secondaryText,
+                                                  size: 20.0,
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: TextField(
+                                                  controller:
+                                                      _searchController,
+                                                  autofocus: true,
+                                                  decoration: InputDecoration(
+                                                    hintText:
+                                                        'Buscar un ejercicio...',
+                                                    hintStyle:
+                                                        FlutterFlowTheme.of(
+                                                                context)
+                                                            .bodyMedium
+                                                            .override(
+                                                              font: GoogleFonts
+                                                                  .outfit(),
+                                                              color: FlutterFlowTheme
+                                                                      .of(context)
+                                                                  .secondaryText,
+                                                              letterSpacing:
+                                                                  0.0,
+                                                            ),
+                                                    border: InputBorder.none,
+                                                    isDense: true,
+                                                  ),
+                                                  style: FlutterFlowTheme.of(
+                                                          context)
+                                                      .bodyMedium
+                                                      .override(
+                                                        font: GoogleFonts
+                                                            .outfit(),
+                                                        color:
+                                                            FlutterFlowTheme.of(
+                                                                    context)
+                                                                .primaryText,
+                                                        letterSpacing: 0.0,
+                                                      ),
+                                                ),
+                                              ),
+                                              SizedBox(width: 12.0),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                       Container(
                                         height: 16.0,
                                       ),
@@ -281,83 +398,123 @@ class _RegulationToolsWidgetState extends State<RegulationToolsWidget> {
                                   ),
                                 ),
                               ),
-                              ExerciseListItem(
-                                icon: Icons.pan_tool_alt_rounded,
-                                iconColor: FlutterFlowTheme.of(context).primary,
-                                iconBg: FlutterFlowTheme.of(context).primary15,
-                                title: 'Técnica 5-4-3-2-1',
-                                subtitle:
-                                    'Reconecta con tus 5 sentidos, paso a paso.',
-                                duration: '~3 min',
-                                onTap: () => context
-                                    .pushNamed(Grounding54321Widget.routeName),
-                              ),
-                              ExerciseListItem(
-                                icon: Icons.air_rounded,
-                                iconColor: FlutterFlowTheme.of(context).primary,
-                                iconBg: FlutterFlowTheme.of(context).primary15,
-                                title: 'Respiración guiada',
-                                subtitle:
-                                    'Inhala, mantén y exhala siguiendo el círculo.',
-                                duration: '1-3 min',
-                                onTap: () => context
-                                    .pushNamed(BreathingGuidedWidget.routeName),
-                              ),
-                              ExerciseListItem(
-                                icon: Icons.crop_square_rounded,
-                                iconColor: FlutterFlowTheme.of(context).primary,
-                                iconBg: FlutterFlowTheme.of(context).primary15,
-                                title: 'Respiración cuadrada',
-                                subtitle:
-                                    'Sigue el punto alrededor del cuadrado (4-4-4-4).',
-                                duration: '~2 min',
-                                onTap: () => context
-                                    .pushNamed(BreathingVisualWidget.routeName),
-                              ),
-                              ExerciseListItem(
-                                icon: Icons.palette_rounded,
-                                iconColor: FlutterFlowTheme.of(context).warning,
-                                iconBg: FlutterFlowTheme.of(context).warning15,
-                                title: 'Encuentra el color',
-                                subtitle:
-                                    'Localiza objetos de un color a tu alrededor.',
-                                duration: '~1 min',
-                                onTap: () => context
-                                    .pushNamed(FindTheColorWidget.routeName),
-                              ),
-                              ExerciseListItem(
-                                icon: Icons.hearing_rounded,
-                                iconColor: FlutterFlowTheme.of(context).info,
-                                iconBg: FlutterFlowTheme.of(context).info15,
-                                title: 'Atención auditiva',
-                                subtitle:
-                                    'Sonidos relajantes: lluvia, bosque, mar o viento.',
-                                duration: 'Libre',
-                                onTap: () => context
-                                    .pushNamed(SoundFocusWidget.routeName),
-                              ),
-                              ExerciseListItem(
-                                icon: Icons.vibration_rounded,
-                                iconColor: FlutterFlowTheme.of(context).info,
-                                iconBg: FlutterFlowTheme.of(context).info15,
-                                title: 'Vibración consciente',
-                                subtitle:
-                                    'Vibraciones suaves para favorecer la calma.',
-                                duration: '30-90s',
-                                onTap: () => context.pushNamed(
-                                    MindfulVibrationWidget.routeName),
-                              ),
-                              ExerciseListItem(
-                                icon: Icons.visibility_rounded,
-                                iconColor: FlutterFlowTheme.of(context).success,
-                                iconBg: FlutterFlowTheme.of(context).success15,
-                                title: 'Observación consciente',
-                                subtitle:
-                                    'Encuentra detalles específicos en una escena.',
-                                duration: '~1 min',
-                                onTap: () => context.pushNamed(
-                                    MindfulObservationWidget.routeName),
-                              ),
+                              if (_matchesSearch('Técnica 5-4-3-2-1',
+                                  'Reconecta con tus 5 sentidos, paso a paso.'))
+                                ExerciseListItem(
+                                  icon: Icons.pan_tool_alt_rounded,
+                                  iconColor:
+                                      FlutterFlowTheme.of(context).primary,
+                                  iconBg:
+                                      FlutterFlowTheme.of(context).primary15,
+                                  title: 'Técnica 5-4-3-2-1',
+                                  subtitle:
+                                      'Reconecta con tus 5 sentidos, paso a paso.',
+                                  duration: '~3 min',
+                                  onTap: () => context.pushNamed(
+                                      Grounding54321Widget.routeName),
+                                ),
+                              if (_matchesSearch('Respiración guiada',
+                                  'Inhala, mantén y exhala siguiendo el círculo.'))
+                                ExerciseListItem(
+                                  icon: Icons.air_rounded,
+                                  iconColor:
+                                      FlutterFlowTheme.of(context).primary,
+                                  iconBg:
+                                      FlutterFlowTheme.of(context).primary15,
+                                  title: 'Respiración guiada',
+                                  subtitle:
+                                      'Inhala, mantén y exhala siguiendo el círculo.',
+                                  duration: '1-3 min',
+                                  onTap: () => context.pushNamed(
+                                      BreathingGuidedWidget.routeName),
+                                ),
+                              if (_matchesSearch('Respiración cuadrada',
+                                  'Sigue el punto alrededor del cuadrado (4-4-4-4).'))
+                                ExerciseListItem(
+                                  icon: Icons.crop_square_rounded,
+                                  iconColor:
+                                      FlutterFlowTheme.of(context).primary,
+                                  iconBg:
+                                      FlutterFlowTheme.of(context).primary15,
+                                  title: 'Respiración cuadrada',
+                                  subtitle:
+                                      'Sigue el punto alrededor del cuadrado (4-4-4-4).',
+                                  duration: '~2 min',
+                                  onTap: () => context.pushNamed(
+                                      BreathingVisualWidget.routeName),
+                                ),
+                              if (_matchesSearch('Encuentra el color',
+                                  'Localiza objetos de un color a tu alrededor.'))
+                                ExerciseListItem(
+                                  icon: Icons.palette_rounded,
+                                  iconColor:
+                                      FlutterFlowTheme.of(context).warning,
+                                  iconBg:
+                                      FlutterFlowTheme.of(context).warning15,
+                                  title: 'Encuentra el color',
+                                  subtitle:
+                                      'Localiza objetos de un color a tu alrededor.',
+                                  duration: '~1 min',
+                                  onTap: () => context
+                                      .pushNamed(FindTheColorWidget.routeName),
+                                ),
+                              if (_matchesSearch('Atención auditiva',
+                                  'Sonidos relajantes: lluvia, bosque, mar o viento.'))
+                                ExerciseListItem(
+                                  icon: Icons.hearing_rounded,
+                                  iconColor: FlutterFlowTheme.of(context).info,
+                                  iconBg: FlutterFlowTheme.of(context).info15,
+                                  title: 'Atención auditiva',
+                                  subtitle:
+                                      'Sonidos relajantes: lluvia, bosque, mar o viento.',
+                                  duration: 'Libre',
+                                  onTap: () => context
+                                      .pushNamed(SoundFocusWidget.routeName),
+                                ),
+                              if (_matchesSearch('Vibración consciente',
+                                  'Vibraciones suaves para favorecer la calma.'))
+                                ExerciseListItem(
+                                  icon: Icons.vibration_rounded,
+                                  iconColor: FlutterFlowTheme.of(context).info,
+                                  iconBg: FlutterFlowTheme.of(context).info15,
+                                  title: 'Vibración consciente',
+                                  subtitle:
+                                      'Vibraciones suaves para favorecer la calma.',
+                                  duration: '30-90s',
+                                  onTap: () => context.pushNamed(
+                                      MindfulVibrationWidget.routeName),
+                                ),
+                              if (_matchesSearch('Observación consciente',
+                                  'Encuentra detalles específicos en una escena.'))
+                                ExerciseListItem(
+                                  icon: Icons.visibility_rounded,
+                                  iconColor:
+                                      FlutterFlowTheme.of(context).success,
+                                  iconBg:
+                                      FlutterFlowTheme.of(context).success15,
+                                  title: 'Observación consciente',
+                                  subtitle:
+                                      'Encuentra detalles específicos en una escena.',
+                                  duration: '~1 min',
+                                  onTap: () => context.pushNamed(
+                                      MindfulObservationWidget.routeName),
+                                ),
+                              if (_searchQuery.isNotEmpty && !_hasAnyMatch)
+                                Padding(
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 12.0),
+                                  child: Text(
+                                    'No se encontraron ejercicios para "${_searchController.text}".',
+                                    style: FlutterFlowTheme.of(context)
+                                        .bodyMedium
+                                        .override(
+                                          font: GoogleFonts.outfit(),
+                                          color: FlutterFlowTheme.of(context)
+                                              .secondaryText,
+                                          letterSpacing: 0.0,
+                                        ),
+                                  ),
+                                ),
                             ].divide(SizedBox(height: 12.0)),
                           ),
                         ),

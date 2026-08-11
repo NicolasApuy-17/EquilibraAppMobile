@@ -685,9 +685,8 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                           hoverColor: Colors.transparent,
                                           highlightColor: Colors.transparent,
                                           onTap: () async {
-                                            context.pushNamed(
-                                                RegulationToolsWidget
-                                                    .routeName);
+                                            await launchURL(
+                                                'https://wa.me/message/Q4SUBWYO4CLDF1');
                                           },
                                           child: wrapWithModel(
                                             model: _model.quickActionModel1,
@@ -695,7 +694,7 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                 safeSetState(() {}),
                                             child: QuickActionWidget(
                                               target:
-                                                  'navigate(regulation_tools)',
+                                                  'https://wa.me/message/Q4SUBWYO4CLDF1',
                                               icon: Icon(
                                                 Icons.warning_amber_rounded,
                                                 color:
