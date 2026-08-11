@@ -5,6 +5,7 @@ import '../auth/firebase_auth/auth_util.dart';
 import '../flutter_flow/flutter_flow_util.dart';
 import 'schema/util/firestore_util.dart';
 
+import 'schema/goals_record.dart';
 import 'schema/records_record.dart';
 import 'schema/tasks_record.dart';
 import 'schema/user_prefs_record.dart';
@@ -17,6 +18,7 @@ export 'schema/index.dart';
 export 'schema/util/firestore_util.dart';
 export 'schema/util/schema_util.dart';
 
+export 'schema/goals_record.dart';
 export 'schema/records_record.dart';
 export 'schema/tasks_record.dart';
 export 'schema/user_prefs_record.dart';
@@ -91,6 +93,43 @@ Future<List<TasksRecord>> queryTasksRecordOnce({
     queryCollectionOnce(
       TasksRecord.collection,
       TasksRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query GoalsRecords (as a Stream and as a Future).
+Future<int> queryGoalsRecordCount({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      GoalsRecord.collection,
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<GoalsRecord>> queryGoalsRecord({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      GoalsRecord.collection,
+      GoalsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<GoalsRecord>> queryGoalsRecordOnce({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      GoalsRecord.collection,
+      GoalsRecord.fromSnapshot,
       queryBuilder: queryBuilder,
       limit: limit,
       singleRecord: singleRecord,
@@ -333,4 +372,24 @@ Future maybeCreateUser(User user) async {
 Future updateUserDocument({String? email}) async {
   await currentUserDocument?.reference
       .update(createUsersRecordData(email: email));
+}
+
+// Updates the editable profile fields (name, photo, phone) for the current
+// user. Only non-null values are written, so partial updates are safe.
+Future updateUserProfile({
+  String? displayName,
+  String? photoUrl,
+  String? phoneNumber,
+}) async {
+  final reference = currentUserReference;
+  if (reference == null) return;
+  await reference.update(createUsersRecordData(
+    displayName: displayName,
+    photoUrl: photoUrl,
+    phoneNumber: phoneNumber,
+  ));
+  // Keep the in-memory cached document in sync immediately so the UI
+  // reflects the change without waiting for the Firestore stream to emit.
+  final snapshot = await reference.get();
+  currentUserDocument = UsersRecord.fromSnapshot(snapshot);
 }

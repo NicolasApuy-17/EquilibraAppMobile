@@ -1,6 +1,11 @@
 // Export pages
 export '/pages/emotional_record/emotional_record_widget.dart'
     show EmotionalRecordWidget;
+export '/pages/edit_profile/edit_profile_widget.dart' show EditProfileWidget;
+export '/pages/help_center/help_center_widget.dart' show HelpCenterWidget;
+export '/pages/support_contact/support_contact_widget.dart'
+    show SupportContactWidget;
+export '/pages/my_goals/my_goals_widget.dart' show MyGoalsWidget;
 export '/pages/home_screen/home_screen_widget.dart' show HomeScreenWidget;
 export '/pages/my_records/my_records_widget.dart' show MyRecordsWidget;
 export '/pages/regulation_exercises/grounding_54321_widget.dart'

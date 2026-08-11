@@ -171,6 +171,30 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           builder: (context, params) => UserProfileWidget(),
         ),
         FFRoute(
+          name: EditProfileWidget.routeName,
+          path: EditProfileWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => EditProfileWidget(),
+        ),
+        FFRoute(
+          name: HelpCenterWidget.routeName,
+          path: HelpCenterWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => HelpCenterWidget(),
+        ),
+        FFRoute(
+          name: SupportContactWidget.routeName,
+          path: SupportContactWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => SupportContactWidget(),
+        ),
+        FFRoute(
+          name: MyGoalsWidget.routeName,
+          path: MyGoalsWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => MyGoalsWidget(),
+        ),
+        FFRoute(
           name: WeeklyProgressWidget.routeName,
           path: WeeklyProgressWidget.routePath,
           requireAuth: true,

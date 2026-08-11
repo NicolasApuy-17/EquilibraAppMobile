@@ -126,27 +126,6 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
     );
   }
 
-  Future<void> _showGoalsComingSoonDialog() async {
-    return showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text('Mis Objetivos'),
-          content: Text(
-            'Próximamente podrás definir metas sencillas de autocuidado. '
-            'Esta sección todavía está en desarrollo.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text('Entendido'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     context.watch<FFAppState>();
@@ -249,8 +228,8 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                           size: 24.0,
                                         ),
                                         onPressed: () async {
-                                          context.goNamed(
-                                              UserProfileWidget.routeName);
+                                          context.pushNamed(
+                                              EditProfileWidget.routeName);
                                         },
                                       ),
                                     ],
@@ -596,7 +575,8 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                     focusColor: Colors.transparent,
                                     hoverColor: Colors.transparent,
                                     highlightColor: Colors.transparent,
-                                    onTap: _showGoalsComingSoonDialog,
+                                    onTap: () => context.pushNamed(
+                                        MyGoalsWidget.routeName),
                                     child: wrapWithModel(
                                       model: _model.profileMenuItemModel3,
                                       updateCallback: () => safeSetState(() {}),
@@ -654,29 +634,45 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                   wrapWithModel(
                                     model: _model.profileMenuItemModel4,
                                     updateCallback: () => safeSetState(() {}),
-                                    child: ProfileMenuItemWidget(
-                                      icon: Icon(
-                                        Icons.help_outline_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 22.0,
+                                    child: InkWell(
+                                      splashColor: Colors.transparent,
+                                      focusColor: Colors.transparent,
+                                      hoverColor: Colors.transparent,
+                                      highlightColor: Colors.transparent,
+                                      onTap: () => context.pushNamed(
+                                          HelpCenterWidget.routeName),
+                                      child: ProfileMenuItemWidget(
+                                        icon: Icon(
+                                          Icons.help_outline_rounded,
+                                          color: FlutterFlowTheme.of(context)
+                                              .primary,
+                                          size: 22.0,
+                                        ),
+                                        title: 'Centro de Ayuda',
+                                        subtitle: 'Preguntas frecuentes',
                                       ),
-                                      title: 'Centro de Ayuda',
-                                      subtitle: 'Preguntas frecuentes',
                                     ),
                                   ),
                                   wrapWithModel(
                                     model: _model.profileMenuItemModel5,
                                     updateCallback: () => safeSetState(() {}),
-                                    child: ProfileMenuItemWidget(
-                                      icon: Icon(
-                                        Icons.contact_support_rounded,
-                                        color: FlutterFlowTheme.of(context)
-                                            .primary,
-                                        size: 22.0,
+                                    child: InkWell(
+                                      splashColor: Colors.transparent,
+                                      focusColor: Colors.transparent,
+                                      hoverColor: Colors.transparent,
+                                      highlightColor: Colors.transparent,
+                                      onTap: () => context.pushNamed(
+                                          SupportContactWidget.routeName),
+                                      child: ProfileMenuItemWidget(
+                                        icon: Icon(
+                                          Icons.contact_support_rounded,
+                                          color: FlutterFlowTheme.of(context)
+                                              .primary,
+                                          size: 22.0,
+                                        ),
+                                        title: 'Contacto de Apoyo',
+                                        subtitle: 'Recursos de emergencia',
                                       ),
-                                      title: 'Contacto de Apoyo',
-                                      subtitle: 'Recursos de emergencia',
                                     ),
                                   ),
                                   Container(
