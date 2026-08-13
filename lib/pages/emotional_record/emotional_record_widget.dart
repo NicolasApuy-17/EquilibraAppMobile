@@ -56,7 +56,7 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
       child: Scaffold(
         key: scaffoldKey,
         backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-        body: Container(
+        body: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.max,
             children: [
@@ -779,15 +779,15 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                             ].divide(SizedBox(height: 32.0)),
                           ),
                         ),
-                        wrapWithModel(
-                          model: _model.bottomNavModel,
-                          updateCallback: () => safeSetState(() {}),
-                          child: BottomNavWidget(),
-                        ),
                       ],
                     ),
                   ),
                 ),
+              ),
+              wrapWithModel(
+                model: _model.bottomNavModel,
+                updateCallback: () => safeSetState(() {}),
+                child: BottomNavWidget(),
               ),
             ],
           ),

@@ -14,11 +14,11 @@ class _AmbientSound {
 
 const _kAmbientSounds = [
   _AmbientSound(
-      'Lluvia', 'assets/audios/ambient/rain.mp3', Icons.water_drop_rounded),
+      'Lluvia', 'assets/audios/ambient/rain.wav', Icons.water_drop_rounded),
   _AmbientSound(
-      'Bosque', 'assets/audios/ambient/forest.mp3', Icons.forest_rounded),
-  _AmbientSound('Mar', 'assets/audios/ambient/sea.mp3', Icons.waves_rounded),
-  _AmbientSound('Viento', 'assets/audios/ambient/wind.mp3', Icons.air_rounded),
+      'Bosque', 'assets/audios/ambient/forest.wav', Icons.forest_rounded),
+  _AmbientSound('Mar', 'assets/audios/ambient/sea.wav', Icons.waves_rounded),
+  _AmbientSound('Viento', 'assets/audios/ambient/wind.wav', Icons.air_rounded),
 ];
 
 class SoundFocusWidget extends StatefulWidget {

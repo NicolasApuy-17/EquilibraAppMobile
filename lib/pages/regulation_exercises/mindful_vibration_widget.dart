@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:vibration/vibration.dart';
 
 import '/flutter_flow/flutter_flow_theme.dart';
 import 'exercise_controls.dart';
@@ -26,27 +26,64 @@ class _MindfulVibrationWidgetState extends State<MindfulVibrationWidget> {
   bool _isRunning = false;
   Timer? _timer;
   int _lastPulseCycle = -1;
+  bool? _hasVibrator;
+
+  @override
+  void initState() {
+    super.initState();
+    Vibration.hasVibrator().then((value) {
+      if (mounted) setState(() => _hasVibrator = value);
+    }).catchError((_) {
+      if (mounted) setState(() => _hasVibrator = false);
+    });
+  }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _stopVibration();
     super.dispose();
+  }
+
+  void _startVibration() {
+    final remainingMs = (_totalDuration * 1000) - _fineElapsedMs;
+    if (remainingMs <= 0) return;
+    try {
+      Vibration.vibrate(duration: remainingMs);
+    } catch (_) {
+      try {
+        Vibration.vibrate();
+      } catch (_) {
+        // Vibration unavailable on this device/platform; safe to ignore.
+      }
+    }
+  }
+
+  void _stopVibration() {
+    try {
+      Vibration.cancel();
+    } catch (_) {
+      // Vibration unavailable on this device/platform; safe to ignore.
+    }
   }
 
   void _toggleRunning() {
     if (_fineElapsedMs ~/ 1000 >= _totalDuration) return;
     setState(() => _isRunning = !_isRunning);
     if (_isRunning) {
+      _startVibration();
       _timer = Timer.periodic(Duration(milliseconds: 100), (_) {
         setState(() => _fineElapsedMs += 100);
         _maybePulse();
         if (_fineElapsedMs ~/ 1000 >= _totalDuration) {
           setState(() => _isRunning = false);
           _timer?.cancel();
+          _stopVibration();
         }
       });
     } else {
       _timer?.cancel();
+      _stopVibration();
     }
   }
 
@@ -54,16 +91,12 @@ class _MindfulVibrationWidgetState extends State<MindfulVibrationWidget> {
     final cycle = _fineElapsedMs ~/ _kPulseCycleMs;
     if (cycle != _lastPulseCycle) {
       _lastPulseCycle = cycle;
-      try {
-        HapticFeedback.mediumImpact();
-      } catch (_) {
-        // Haptics unavailable on this device/platform; safe to ignore.
-      }
     }
   }
 
   void _reset() {
     _timer?.cancel();
+    _stopVibration();
     setState(() {
       _isRunning = false;
       _fineElapsedMs = 0;
@@ -89,6 +122,19 @@ class _MindfulVibrationWidgetState extends State<MindfulVibrationWidget> {
         child: Column(
           children: [
             ExerciseHeader(title: 'Vibración consciente'),
+            if (_hasVibrator == false)
+              Padding(
+                padding: EdgeInsetsDirectional.fromSTEB(24.0, 0.0, 24.0, 4.0),
+                child: Text(
+                  'Este dispositivo no tiene motor de vibración; solo verás la animación.',
+                  textAlign: TextAlign.center,
+                  style: FlutterFlowTheme.of(context).bodySmall.override(
+                        font: GoogleFonts.outfit(),
+                        color: FlutterFlowTheme.of(context).secondaryText,
+                        letterSpacing: 0.0,
+                      ),
+                ),
+              ),
             if (!_isRunning && _fineElapsedMs == 0)
               Padding(
                 padding: EdgeInsetsDirectional.fromSTEB(24.0, 0.0, 24.0, 8.0),

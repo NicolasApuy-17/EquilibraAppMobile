@@ -9,8 +9,8 @@ import 'exercise_controls.dart';
 enum _BreathPhase { inhale, hold, exhale }
 
 const _kInhaleSeconds = 4;
-const _kHoldSeconds = 4;
-const _kExhaleSeconds = 4;
+const _kHoldSeconds = 1;
+const _kExhaleSeconds = 7;
 const _kCycleSeconds = _kInhaleSeconds + _kHoldSeconds + _kExhaleSeconds;
 
 const _kDurationOptions = [60, 120, 180];

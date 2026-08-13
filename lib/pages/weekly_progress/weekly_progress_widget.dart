@@ -57,7 +57,7 @@ class _WeeklyProgressWidgetState extends State<WeeklyProgressWidget> {
       child: Scaffold(
         key: scaffoldKey,
         backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-        body: Container(
+        body: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.max,
             children: [
@@ -1070,11 +1070,6 @@ class _WeeklyProgressWidgetState extends State<WeeklyProgressWidget> {
                                     Container(
                                       height: 32.0,
                                     ),
-                                    wrapWithModel(
-                                      model: _model.bottomNavModel,
-                                      updateCallback: () => safeSetState(() {}),
-                                      child: BottomNav4Widget(),
-                                    ),
                                   ].divide(SizedBox(height: 24.0)),
                                 ),
                               );
@@ -1085,6 +1080,11 @@ class _WeeklyProgressWidgetState extends State<WeeklyProgressWidget> {
                     ),
                   ),
                 ),
+              ),
+              wrapWithModel(
+                model: _model.bottomNavModel,
+                updateCallback: () => safeSetState(() {}),
+                child: BottomNav4Widget(),
               ),
             ],
           ),
@@ -1133,11 +1133,6 @@ class _ProgressErrorState extends StatelessWidget {
               ),
             ],
           ),
-        ),
-        wrapWithModel(
-          model: bottomNavModel,
-          updateCallback: onUpdate,
-          child: BottomNav4Widget(),
         ),
       ],
     );
@@ -1202,11 +1197,6 @@ class _ProgressEmptyState extends StatelessWidget {
               ),
             ],
           ),
-        ),
-        wrapWithModel(
-          model: bottomNavModel,
-          updateCallback: onUpdate,
-          child: BottomNav4Widget(),
         ),
       ],
     );

@@ -1,11 +1,7 @@
-Coloca aqui los 4 archivos de audio para el ejercicio "Atencion auditiva" (Regularme):
+Estos 4 archivos (rain.wav, forest.wav, sea.wav, wind.wav) son sonidos
+ambientales generados de forma sintetica, puestos aqui para que el
+ejercicio "Atencion auditiva" (Regularme) funcione de inmediato.
 
-  rain.mp3    -> sonido de lluvia
-  forest.mp3  -> sonido de bosque
-  sea.mp3     -> sonido de mar
-  wind.mp3    -> sonido de viento
-
-La pantalla (lib/pages/regulation_exercises/sound_focus_widget.dart) ya esta
-completamente funcional: reproduccion, pausa, reinicio, progreso y duracion.
-Si un archivo no existe todavia, la app lo indica con un mensaje en pantalla
-en lugar de fallar.
+Si mas adelante quieres usar grabaciones reales, solo reemplaza estos
+archivos por los tuyos usando los mismos nombres (o actualiza las rutas
+en lib/pages/regulation_exercises/sound_focus_widget.dart).

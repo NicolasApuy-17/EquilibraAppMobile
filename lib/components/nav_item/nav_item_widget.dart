@@ -86,7 +86,7 @@ class _NavItemWidgetState extends State<NavItemWidget> {
       highlightColor: Colors.transparent,
       onTap: () => _navigateToNavTarget(context, widget!.target),
       child: Padding(
-        padding: EdgeInsetsDirectional.fromSTEB(8.0, 4.0, 8.0, 4.0),
+        padding: EdgeInsetsDirectional.fromSTEB(2.0, 4.0, 2.0, 4.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -98,6 +98,10 @@ class _NavItemWidgetState extends State<NavItemWidget> {
                 widget!.label,
                 'Inicio',
               ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
               style: FlutterFlowTheme.of(context).bodyMedium.override(
                     font: GoogleFonts.outfit(
                       fontWeight:
@@ -114,12 +118,13 @@ class _NavItemWidgetState extends State<NavItemWidget> {
                           : FlutterFlowTheme.of(context).secondaryText,
                       FlutterFlowTheme.of(context).secondaryText,
                     ),
+                    fontSize: 11.0,
                     letterSpacing: 0.0,
                     fontWeight:
                         FlutterFlowTheme.of(context).bodyMedium.fontWeight,
                     fontStyle:
                         FlutterFlowTheme.of(context).bodyMedium.fontStyle,
-                    lineHeight: 1.6,
+                    lineHeight: 1.2,
                   ),
             ),
           ].divide(SizedBox(height: 2.0)),

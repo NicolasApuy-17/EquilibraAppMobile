@@ -52,7 +52,7 @@ class _BottomNav3WidgetState extends State<BottomNav3Widget> {
         ),
       ),
       child: Padding(
-        padding: EdgeInsetsDirectional.fromSTEB(16.0, 8.0, 16.0, 8.0),
+        padding: EdgeInsetsDirectional.fromSTEB(4.0, 8.0, 4.0, 8.0),
         child: Container(
           child: Row(
             mainAxisSize: MainAxisSize.max,

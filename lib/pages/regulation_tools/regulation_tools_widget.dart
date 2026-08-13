@@ -87,7 +87,7 @@ class _RegulationToolsWidgetState extends State<RegulationToolsWidget> {
       child: Scaffold(
         key: scaffoldKey,
         backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-        body: Container(
+        body: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.max,
             children: [
@@ -814,22 +814,17 @@ class _RegulationToolsWidgetState extends State<RegulationToolsWidget> {
                           ),
                         ),
                         Container(
-                          height: 32.0,
-                        ),
-                        Align(
-                          alignment: AlignmentDirectional(0.0, 1.0),
-                          child: Container(
-                            child: wrapWithModel(
-                              model: _model.bottomNavModel,
-                              updateCallback: () => safeSetState(() {}),
-                              child: BottomNav2Widget(),
-                            ),
-                          ),
+                          height: 16.0,
                         ),
                       ],
                     ),
                   ),
                 ),
+              ),
+              wrapWithModel(
+                model: _model.bottomNavModel,
+                updateCallback: () => safeSetState(() {}),
+                child: BottomNav2Widget(),
               ),
             ],
           ),

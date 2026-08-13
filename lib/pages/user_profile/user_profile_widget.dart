@@ -159,7 +159,7 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
           child: Scaffold(
             key: scaffoldKey,
             backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-            body: Container(
+            body: SafeArea(
               child: Column(
                 mainAxisSize: MainAxisSize.max,
                 children: [
@@ -752,43 +752,15 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                 ],
                               ),
                             ),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: FlutterFlowTheme.of(context)
-                                    .secondaryBackground,
-                                shape: BoxShape.rectangle,
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Container(
-                                    height: 1.0,
-                                    decoration: BoxDecoration(
-                                      color: FlutterFlowTheme.of(context)
-                                          .alternate,
-                                      shape: BoxShape.rectangle,
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: EdgeInsetsDirectional.fromSTEB(
-                                        24.0, 16.0, 24.0, 16.0),
-                                    child: Container(
-                                      child: wrapWithModel(
-                                        model: _model.bottomNavModel,
-                                        updateCallback: () =>
-                                            safeSetState(() {}),
-                                        child: BottomNav3Widget(),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                           ],
                         ),
                       ),
                     ),
+                  ),
+                  wrapWithModel(
+                    model: _model.bottomNavModel,
+                    updateCallback: () => safeSetState(() {}),
+                    child: BottomNav3Widget(),
                   ),
                 ],
               ),
