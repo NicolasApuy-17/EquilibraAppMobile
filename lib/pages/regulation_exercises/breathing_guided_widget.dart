@@ -1,6 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '/flutter_flow/flutter_flow_theme.dart';
@@ -25,47 +24,53 @@ class BreathingGuidedWidget extends StatefulWidget {
   State<BreathingGuidedWidget> createState() => _BreathingGuidedWidgetState();
 }
 
-class _BreathingGuidedWidgetState extends State<BreathingGuidedWidget> {
+class _BreathingGuidedWidgetState extends State<BreathingGuidedWidget>
+    with SingleTickerProviderStateMixin {
   int _totalDuration = 120;
   int _elapsedSeconds = 0;
   bool _isRunning = false;
-  Timer? _timer;
+  Ticker? _ticker;
+  Duration _lastTick = Duration.zero;
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _ticker?.dispose();
     super.dispose();
   }
 
   int _fineElapsedMs = 0;
 
+  // Driven by the frame ticker (vsync) instead of a fixed-interval Timer so
+  // the circle scales smoothly every frame rather than jumping every 200ms.
+  void _onTick(Duration elapsed) {
+    final deltaMs = (elapsed - _lastTick).inMilliseconds;
+    _lastTick = elapsed;
+    if (deltaMs <= 0) return;
+    setState(() {
+      _fineElapsedMs += deltaMs;
+      _elapsedSeconds = _fineElapsedMs ~/ 1000;
+      if (_elapsedSeconds >= _totalDuration) {
+        _isRunning = false;
+        _ticker?.stop();
+      }
+    });
+  }
+
   void _toggleRunning() {
     if (_elapsedSeconds >= _totalDuration) return;
     setState(() => _isRunning = !_isRunning);
     if (_isRunning) {
-      // Tick at 200ms so the circle animates smoothly, but only advance the
-      // whole-second counter every 5th tick (200ms * 5 = 1s).
-      var subTick = 0;
-      _timer = Timer.periodic(Duration(milliseconds: 200), (_) {
-        subTick++;
-        setState(() {
-          _fineElapsedMs += 200;
-          if (subTick % 5 == 0) {
-            _elapsedSeconds++;
-          }
-          if (_elapsedSeconds >= _totalDuration) {
-            _isRunning = false;
-            _timer?.cancel();
-          }
-        });
-      });
+      _lastTick = Duration.zero;
+      _ticker ??= createTicker(_onTick);
+      _ticker!.start();
     } else {
-      _timer?.cancel();
+      _ticker?.stop();
     }
   }
 
   void _reset() {
-    _timer?.cancel();
+    _ticker?.stop();
+    _lastTick = Duration.zero;
     setState(() {
       _isRunning = false;
       _elapsedSeconds = 0;

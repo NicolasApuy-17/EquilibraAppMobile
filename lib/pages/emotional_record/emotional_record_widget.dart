@@ -46,6 +46,104 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
     super.dispose();
   }
 
+  Future<String?> _promptForLabel({
+    required String title,
+    required String hint,
+  }) async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: FlutterFlowTheme.of(context).secondaryBackground,
+          title: Text(
+            title,
+            style: FlutterFlowTheme.of(context).titleMedium.override(
+                  font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                  color: FlutterFlowTheme.of(context).primaryText,
+                  letterSpacing: 0.0,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 40,
+            style: TextStyle(color: FlutterFlowTheme.of(context).primaryText),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle:
+                  TextStyle(color: FlutterFlowTheme.of(context).secondaryText),
+            ),
+            onSubmitted: (value) =>
+                Navigator.of(dialogContext).pop(value.trim()),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(
+                    color: FlutterFlowTheme.of(context).secondaryText),
+              ),
+            ),
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(dialogContext).pop(controller.text.trim()),
+              child: Text(
+                'Agregar',
+                style: TextStyle(color: FlutterFlowTheme.of(context).primary),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showDuplicateSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: TextStyle(color: FlutterFlowTheme.of(context).primaryText),
+        ),
+        duration: Duration(milliseconds: 3000),
+        backgroundColor: FlutterFlowTheme.of(context).alternate,
+      ),
+    );
+  }
+
+  Future<void> _showAddBehaviorDialog() async {
+    final label = await _promptForLabel(
+      title: 'Agregar conducta',
+      hint: 'Ej. Meditación',
+    );
+    if (label == null || label.isEmpty || !context.mounted) return;
+
+    final added = _model.addCustomBehavior(label);
+    if (!added) {
+      _showDuplicateSnackBar('Esa conducta ya está en la lista.');
+      return;
+    }
+    safeSetState(() {});
+  }
+
+  Future<void> _showAddEmotionDialog() async {
+    final label = await _promptForLabel(
+      title: 'Agregar estado de ánimo',
+      hint: 'Ej. Ansioso',
+    );
+    if (label == null || label.isEmpty || !context.mounted) return;
+
+    final added = _model.addCustomEmotion(label);
+    if (!added) {
+      _showDuplicateSnackBar('Ese estado de ánimo ya está en la lista.');
+      return;
+    }
+    safeSetState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -341,6 +439,94 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                                 safeSetState(() {});
                                               }
                                             },
+                                          ),
+                                        ),
+                                      ),
+                                      ..._model.customEmotions.map(
+                                        (emotionLabel) => GestureDetector(
+                                          key: ValueKey(emotionLabel),
+                                          onLongPress: () {
+                                            _model.removeCustomEmotion(
+                                                emotionLabel);
+                                            safeSetState(() {});
+                                          },
+                                          child: EmotionPillCleanWidget(
+                                            label: emotionLabel,
+                                            isSelected:
+                                                _model.selectedEmotion ==
+                                                    emotionLabel,
+                                            onTap: () async {
+                                              if (_model.selectedEmotion ==
+                                                  emotionLabel) {
+                                                _model.selectedEmotion = '';
+                                              } else {
+                                                _model.selectedEmotion =
+                                                    emotionLabel;
+                                              }
+                                              safeSetState(() {});
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      InkWell(
+                                        splashColor: Colors.transparent,
+                                        focusColor: Colors.transparent,
+                                        hoverColor: Colors.transparent,
+                                        highlightColor: Colors.transparent,
+                                        borderRadius:
+                                            BorderRadius.circular(20.0),
+                                        onTap: _showAddEmotionDialog,
+                                        child: Container(
+                                          constraints:
+                                              BoxConstraints(minWidth: 88.0),
+                                          height: 40.0,
+                                          padding: EdgeInsetsDirectional
+                                              .fromSTEB(12.0, 0.0, 12.0, 0.0),
+                                          decoration: BoxDecoration(
+                                            color: FlutterFlowTheme.of(
+                                                    context)
+                                                .tertiary,
+                                            borderRadius:
+                                                BorderRadius.circular(20.0),
+                                            border: Border.all(
+                                              color: FlutterFlowTheme.of(
+                                                      context)
+                                                  .primary,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.add_rounded,
+                                                color: FlutterFlowTheme.of(
+                                                        context)
+                                                    .primary,
+                                                size: 16.0,
+                                              ),
+                                              Text(
+                                                'Agregar',
+                                                style: FlutterFlowTheme.of(
+                                                        context)
+                                                    .bodyMedium
+                                                    .override(
+                                                      font: GoogleFonts.outfit(
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                      color: FlutterFlowTheme
+                                                              .of(context)
+                                                          .primary,
+                                                      letterSpacing: 0.0,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                              ),
+                                            ].divide(SizedBox(width: 4.0)),
                                           ),
                                         ),
                                       ),
@@ -660,6 +846,98 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                             size: 18.0,
                                           ),
                                           label: 'Trabajo/Estudio',
+                                        ),
+                                      ),
+                                      ..._model.customBehaviors.map(
+                                        (behaviorLabel) => GestureDetector(
+                                          key: ValueKey(behaviorLabel),
+                                          onLongPress: () {
+                                            _model.removeCustomBehavior(
+                                                behaviorLabel);
+                                            safeSetState(() {});
+                                          },
+                                          child: BehaviorChipWidget(
+                                            selected: _model.behaviors
+                                                .contains(behaviorLabel),
+                                            onTap: () async {
+                                              _model.toggleBehavior(
+                                                  behaviorLabel);
+                                              safeSetState(() {});
+                                            },
+                                            icon: Icon(
+                                              Icons.label_rounded,
+                                              color: FlutterFlowTheme.of(
+                                                      context)
+                                                  .primaryText,
+                                              size: 18.0,
+                                            ),
+                                            label: behaviorLabel,
+                                          ),
+                                        ),
+                                      ),
+                                      InkWell(
+                                        splashColor: Colors.transparent,
+                                        focusColor: Colors.transparent,
+                                        hoverColor: Colors.transparent,
+                                        highlightColor: Colors.transparent,
+                                        borderRadius:
+                                            BorderRadius.circular(24.0),
+                                        onTap: _showAddBehaviorDialog,
+                                        child: Padding(
+                                          padding:
+                                              EdgeInsetsDirectional.fromSTEB(
+                                                  0.0, 0.0, 4.0, 8.0),
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: FlutterFlowTheme.of(
+                                                      context)
+                                                  .secondaryBackground,
+                                              borderRadius:
+                                                  BorderRadius.circular(24.0),
+                                              shape: BoxShape.rectangle,
+                                              border: Border.all(
+                                                color: FlutterFlowTheme.of(
+                                                        context)
+                                                    .primary,
+                                                width: 1.0,
+                                              ),
+                                            ),
+                                            child: Padding(
+                                              padding: EdgeInsetsDirectional
+                                                  .fromSTEB(
+                                                      8.0, 16.0, 8.0, 16.0),
+                                              child: Row(
+                                                mainAxisSize:
+                                                    MainAxisSize.min,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    Icons.add_rounded,
+                                                    color: FlutterFlowTheme.of(
+                                                            context)
+                                                        .primary,
+                                                    size: 18.0,
+                                                  ),
+                                                  Text(
+                                                    'Agregar',
+                                                    style: FlutterFlowTheme.of(
+                                                            context)
+                                                        .labelMedium
+                                                        .override(
+                                                          font: GoogleFonts
+                                                              .outfit(),
+                                                          color: FlutterFlowTheme
+                                                                  .of(context)
+                                                              .primary,
+                                                          letterSpacing: 0.0,
+                                                        ),
+                                                  ),
+                                                ].divide(
+                                                    SizedBox(width: 4.0)),
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],

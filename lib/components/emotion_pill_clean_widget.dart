@@ -59,8 +59,9 @@ class _EmotionPillCleanWidgetState extends State<EmotionPillCleanWidget> {
           await widget.onTap?.call();
         },
         child: Container(
-          width: 88.0,
+          constraints: BoxConstraints(minWidth: 88.0),
           height: 40.0,
+          padding: EdgeInsetsDirectional.fromSTEB(12.0, 0.0, 12.0, 0.0),
           decoration: BoxDecoration(
             color: widget!.isSelected
                 ? FlutterFlowTheme.of(context).primary

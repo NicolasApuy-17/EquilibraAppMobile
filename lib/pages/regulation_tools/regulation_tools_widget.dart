@@ -802,8 +802,8 @@ class _RegulationToolsWidgetState extends State<RegulationToolsWidget> {
                                           size: 24.0,
                                         ),
                                         onPressed: () async {
-                                          context.goNamed(
-                                              HomeScreenWidget.routeName);
+                                          await launchURL(
+                                              'https://wa.me/message/Q4SUBWYO4CLDF1');
                                         },
                                       ),
                                     ].divide(SizedBox(width: 16.0)),

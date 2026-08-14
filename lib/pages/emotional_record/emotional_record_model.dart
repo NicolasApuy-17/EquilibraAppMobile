@@ -21,6 +21,14 @@ import 'package:provider/provider.dart';
 class EmotionalRecordModel extends FlutterFlowModel<EmotionalRecordWidget> {
   ///  Local state fields for this page.
 
+  static const List<String> predeterminedBehaviors = [
+    'Sueño',
+    'Alimentación',
+    'Socialización',
+    'Ejercicio',
+    'Trabajo/Estudio',
+  ];
+
   List<String> behaviors = [];
   void toggleBehavior(String item) {
     if (behaviors.contains(item)) {
@@ -30,7 +38,64 @@ class EmotionalRecordModel extends FlutterFlowModel<EmotionalRecordWidget> {
     }
   }
 
+  // Conductas agregadas manualmente por el paciente (no predeterminadas).
+  List<String> customBehaviors = [];
+
+  /// Agrega una conducta personalizada y la selecciona automáticamente.
+  /// Devuelve false si el nombre está vacío o ya existe (sin distinguir
+  /// mayúsculas/minúsculas).
+  bool addCustomBehavior(String label) {
+    final trimmed = label.trim();
+    if (trimmed.isEmpty) return false;
+    final alreadyExists = predeterminedBehaviors
+            .any((b) => b.toLowerCase() == trimmed.toLowerCase()) ||
+        customBehaviors.any((b) => b.toLowerCase() == trimmed.toLowerCase());
+    if (alreadyExists) return false;
+    customBehaviors.add(trimmed);
+    behaviors.add(trimmed);
+    return true;
+  }
+
+  void removeCustomBehavior(String label) {
+    customBehaviors.remove(label);
+    behaviors.remove(label);
+  }
+
+  static const List<String> predeterminedEmotions = [
+    'Alegría',
+    'Miedo',
+    'Tristeza',
+    'Enojo',
+    'Vergüenza',
+    'Tranquilo',
+  ];
+
   String? selectedEmotion;
+
+  // Estados de ánimo agregados manualmente por el paciente (no predeterminados).
+  List<String> customEmotions = [];
+
+  /// Agrega un estado de ánimo personalizado y lo selecciona automáticamente.
+  /// Devuelve false si el nombre está vacío o ya existe (sin distinguir
+  /// mayúsculas/minúsculas).
+  bool addCustomEmotion(String label) {
+    final trimmed = label.trim();
+    if (trimmed.isEmpty) return false;
+    final alreadyExists = predeterminedEmotions
+            .any((e) => e.toLowerCase() == trimmed.toLowerCase()) ||
+        customEmotions.any((e) => e.toLowerCase() == trimmed.toLowerCase());
+    if (alreadyExists) return false;
+    customEmotions.add(trimmed);
+    selectedEmotion = trimmed;
+    return true;
+  }
+
+  void removeCustomEmotion(String label) {
+    customEmotions.remove(label);
+    if (selectedEmotion == label) {
+      selectedEmotion = null;
+    }
+  }
 
   double intensityValue = 1.0;
 
@@ -38,9 +103,11 @@ class EmotionalRecordModel extends FlutterFlowModel<EmotionalRecordWidget> {
 
   void resetForm() {
     selectedEmotion = null;
+    customEmotions = [];
     intensityValue = 1.0;
     sliderModel.sliderValue = 1.0;
     behaviors = [];
+    customBehaviors = [];
     textFieldModel.inputTextController?.clear();
   }
 

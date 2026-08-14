@@ -1,6 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:vibration/vibration.dart';
 
@@ -20,11 +19,13 @@ class MindfulVibrationWidget extends StatefulWidget {
   State<MindfulVibrationWidget> createState() => _MindfulVibrationWidgetState();
 }
 
-class _MindfulVibrationWidgetState extends State<MindfulVibrationWidget> {
+class _MindfulVibrationWidgetState extends State<MindfulVibrationWidget>
+    with SingleTickerProviderStateMixin {
   int _totalDuration = 60;
   int _fineElapsedMs = 0;
   bool _isRunning = false;
-  Timer? _timer;
+  Ticker? _ticker;
+  Duration _lastTick = Duration.zero;
   int _lastPulseCycle = -1;
   bool? _hasVibrator;
 
@@ -40,7 +41,7 @@ class _MindfulVibrationWidgetState extends State<MindfulVibrationWidget> {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _ticker?.dispose();
     _stopVibration();
     super.dispose();
   }
@@ -67,22 +68,31 @@ class _MindfulVibrationWidgetState extends State<MindfulVibrationWidget> {
     }
   }
 
+  // Driven by the frame ticker (vsync) instead of a fixed-interval Timer so
+  // the pulse scales smoothly every frame rather than jumping every 100ms.
+  void _onTick(Duration elapsed) {
+    final deltaMs = (elapsed - _lastTick).inMilliseconds;
+    _lastTick = elapsed;
+    if (deltaMs <= 0) return;
+    setState(() => _fineElapsedMs += deltaMs);
+    _maybePulse();
+    if (_fineElapsedMs ~/ 1000 >= _totalDuration) {
+      setState(() => _isRunning = false);
+      _ticker?.stop();
+      _stopVibration();
+    }
+  }
+
   void _toggleRunning() {
     if (_fineElapsedMs ~/ 1000 >= _totalDuration) return;
     setState(() => _isRunning = !_isRunning);
     if (_isRunning) {
       _startVibration();
-      _timer = Timer.periodic(Duration(milliseconds: 100), (_) {
-        setState(() => _fineElapsedMs += 100);
-        _maybePulse();
-        if (_fineElapsedMs ~/ 1000 >= _totalDuration) {
-          setState(() => _isRunning = false);
-          _timer?.cancel();
-          _stopVibration();
-        }
-      });
+      _lastTick = Duration.zero;
+      _ticker ??= createTicker(_onTick);
+      _ticker!.start();
     } else {
-      _timer?.cancel();
+      _ticker?.stop();
       _stopVibration();
     }
   }
@@ -95,7 +105,8 @@ class _MindfulVibrationWidgetState extends State<MindfulVibrationWidget> {
   }
 
   void _reset() {
-    _timer?.cancel();
+    _ticker?.stop();
+    _lastTick = Duration.zero;
     _stopVibration();
     setState(() {
       _isRunning = false;

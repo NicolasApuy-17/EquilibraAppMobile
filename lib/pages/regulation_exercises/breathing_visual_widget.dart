@@ -1,6 +1,5 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '/flutter_flow/flutter_flow_theme.dart';
@@ -21,36 +20,48 @@ class BreathingVisualWidget extends StatefulWidget {
   State<BreathingVisualWidget> createState() => _BreathingVisualWidgetState();
 }
 
-class _BreathingVisualWidgetState extends State<BreathingVisualWidget> {
+class _BreathingVisualWidgetState extends State<BreathingVisualWidget>
+    with SingleTickerProviderStateMixin {
   int _totalDuration = 128;
   int _fineElapsedMs = 0;
   bool _isRunning = false;
-  Timer? _timer;
+  Ticker? _ticker;
+  Duration _lastTick = Duration.zero;
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _ticker?.dispose();
     super.dispose();
+  }
+
+  // Driven by the frame ticker (vsync) instead of a fixed-interval Timer so
+  // the dot interpolates every frame rather than jumping every 100ms.
+  void _onTick(Duration elapsed) {
+    final deltaMs = (elapsed - _lastTick).inMilliseconds;
+    _lastTick = elapsed;
+    if (deltaMs <= 0) return;
+    setState(() => _fineElapsedMs += deltaMs);
+    if (_fineElapsedMs ~/ 1000 >= _totalDuration) {
+      setState(() => _isRunning = false);
+      _ticker?.stop();
+    }
   }
 
   void _toggleRunning() {
     if (_fineElapsedMs ~/ 1000 >= _totalDuration) return;
     setState(() => _isRunning = !_isRunning);
     if (_isRunning) {
-      _timer = Timer.periodic(Duration(milliseconds: 100), (_) {
-        setState(() => _fineElapsedMs += 100);
-        if (_fineElapsedMs ~/ 1000 >= _totalDuration) {
-          setState(() => _isRunning = false);
-          _timer?.cancel();
-        }
-      });
+      _lastTick = Duration.zero;
+      _ticker ??= createTicker(_onTick);
+      _ticker!.start();
     } else {
-      _timer?.cancel();
+      _ticker?.stop();
     }
   }
 
   void _reset() {
-    _timer?.cancel();
+    _ticker?.stop();
+    _lastTick = Duration.zero;
     setState(() {
       _isRunning = false;
       _fineElapsedMs = 0;
