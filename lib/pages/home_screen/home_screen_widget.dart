@@ -712,23 +712,23 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                           hoverColor: Colors.transparent,
                                           highlightColor: Colors.transparent,
                                           onTap: () async {
-                                            context.pushNamed(
-                                                MyRecordsWidget.routeName);
+                                            context
+                                                .pushNamed(ChatbotWidget.routeName);
                                           },
                                           child: wrapWithModel(
                                             model: _model.quickActionModel2,
                                             updateCallback: () =>
                                                 safeSetState(() {}),
                                             child: QuickActionWidget(
-                                              target: 'navigate(my_records)',
+                                              target: 'navigate(chatbot)',
                                               icon: Icon(
-                                                Icons.event_note_rounded,
+                                                Icons.forum_rounded,
                                                 color:
                                                     FlutterFlowTheme.of(context)
                                                         .primary,
                                                 size: 20.0,
                                               ),
-                                              label: 'Ver mi historial',
+                                              label: 'Preguntas frecuentes',
                                             ),
                                           ),
                                         ),

@@ -1,6 +1,7 @@
 // Export pages
 export '/pages/emotional_record/emotional_record_widget.dart'
     show EmotionalRecordWidget;
+export '/pages/chatbot/chatbot_widget.dart' show ChatbotWidget;
 export '/pages/edit_profile/edit_profile_widget.dart' show EditProfileWidget;
 export '/pages/help_center/help_center_widget.dart' show HelpCenterWidget;
 export '/pages/support_contact/support_contact_widget.dart'

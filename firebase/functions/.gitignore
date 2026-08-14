@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Local secrets used by the Functions emulator (see .secret.local.example).
+# Never commit real credentials.
+.secret.local
+.env
+.env.*
+!.env.example
+
+# Firebase / build artifacts
+.runtimeconfig.json
+*.log
+firebase-debug.log
+tsconfig-compile.json

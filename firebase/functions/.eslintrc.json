@@ -1,0 +1,21 @@
+{
+  "root": true,
+  "env": {
+    "es2020": true,
+    "node": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "script"
+  },
+  "extends": ["eslint:recommended", "plugin:promise/recommended"],
+  "rules": {
+    "no-unused-vars": ["warn", { "args": "none" }]
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    "lib/",
+    "*.tgz",
+    "api_manager.js"
+  ]
+}

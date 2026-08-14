@@ -14,7 +14,7 @@
     "@langchain/core": "^0.3.19",
     "@langchain/langgraph": "^0.2.23",
     "@langchain/openai": "^0.3.14",
-    "@langchain/google-genai": "^0.0.8",
+    "@langchain/google-genai": "^0.1.12",
     "@langchain/anthropic": "^0.1.1"
   },
   "devDependencies": {
@@ -22,7 +22,7 @@
     "eslint-plugin-promise": "^4.2.1"
   },
   "scripts": {
-    "lint": "./node_modules/.bin/eslint --max-warnings=0 .",
+    "lint": "eslint --max-warnings=0 .",
     "serve": "firebase -P equilibra-w5rl2h emulators:start --only functions",
     "shell": "firebase -P equilibra-w5rl2h functions:shell",
     "start": "npm run shell",

@@ -99,6 +99,12 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           builder: (context, params) => EmotionalRecordWidget(),
         ),
         FFRoute(
+          name: ChatbotWidget.routeName,
+          path: ChatbotWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => ChatbotWidget(),
+        ),
+        FFRoute(
           name: HomeScreenWidget.routeName,
           path: HomeScreenWidget.routePath,
           requireAuth: true,
