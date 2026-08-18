@@ -39,6 +39,7 @@ class _SoundFocusWidgetState extends State<SoundFocusWidget> {
   String? _errorText;
   Duration _position = Duration.zero;
   Duration? _duration;
+  String? _loadedAssetPath;
 
   @override
   void initState() {
@@ -64,13 +65,14 @@ class _SoundFocusWidgetState extends State<SoundFocusWidget> {
   }
 
   Future<void> _selectSound(_AmbientSound sound) async {
+    if (sound.name == _selected.name) return;
+    await _player.stop();
     setState(() {
       _selected = sound;
       _errorText = null;
       _position = Duration.zero;
       _duration = null;
     });
-    await _player.stop();
   }
 
   Future<void> _togglePlay() async {
@@ -83,12 +85,14 @@ class _SoundFocusWidgetState extends State<SoundFocusWidget> {
       _errorText = null;
     });
     try {
-      if (_player.audioSource == null || _errorText != null) {
+      if (_loadedAssetPath != _selected.assetPath) {
         await _player.setAsset(_selected.assetPath);
         await _player.setLoopMode(LoopMode.one);
+        _loadedAssetPath = _selected.assetPath;
       }
       await _player.play();
     } catch (e) {
+      _loadedAssetPath = null;
       setState(() {
         _errorText =
             'No se pudo cargar "${_selected.name}". Agrega el archivo de audio en ${_selected.assetPath}.';
