@@ -17,6 +17,9 @@ void _navigateToNavTarget(BuildContext context, String target) {
     case 'emotional_record':
       context.goNamed(EmotionalRecordWidget.routeName);
       break;
+    case 'register_hub':
+      context.goNamed(RegisterHubWidget.routeName);
+      break;
     case 'weekly_progress':
       context.goNamed(WeeklyProgressWidget.routeName);
       break;

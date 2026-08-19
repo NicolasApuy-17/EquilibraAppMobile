@@ -1,6 +1,5 @@
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
-import '/components/behavior_chip/behavior_chip_widget.dart';
 import '/components/bottom_nav/bottom_nav_widget.dart';
 import '/components/button/button_widget.dart';
 import '/components/emotion_pill_clean_widget.dart';
@@ -112,21 +111,6 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
         backgroundColor: FlutterFlowTheme.of(context).alternate,
       ),
     );
-  }
-
-  Future<void> _showAddBehaviorDialog() async {
-    final label = await _promptForLabel(
-      title: 'Agregar conducta',
-      hint: 'Ej. Meditación',
-    );
-    if (label == null || label.isEmpty || !context.mounted) return;
-
-    final added = _model.addCustomBehavior(label);
-    if (!added) {
-      _showDuplicateSnackBar('Esa conducta ya está en la lista.');
-      return;
-    }
-    safeSetState(() {});
   }
 
   Future<void> _showAddEmotionDialog() async {
@@ -700,250 +684,6 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                   ),
                                 ].divide(SizedBox(height: 16.0)),
                               ),
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Conductas monitoreadas',
-                                    style: FlutterFlowTheme.of(context)
-                                        .titleMedium
-                                        .override(
-                                          font: GoogleFonts.outfit(
-                                            fontWeight:
-                                                FlutterFlowTheme.of(context)
-                                                    .titleMedium
-                                                    .fontWeight,
-                                            fontStyle:
-                                                FlutterFlowTheme.of(context)
-                                                    .titleMedium
-                                                    .fontStyle,
-                                          ),
-                                          color: FlutterFlowTheme.of(context)
-                                              .primaryText,
-                                          letterSpacing: 0.0,
-                                          fontWeight:
-                                              FlutterFlowTheme.of(context)
-                                                  .titleMedium
-                                                  .fontWeight,
-                                          fontStyle:
-                                              FlutterFlowTheme.of(context)
-                                                  .titleMedium
-                                                  .fontStyle,
-                                          lineHeight: 1.45,
-                                        ),
-                                  ),
-                                  Wrap(
-                                    spacing: 0.0,
-                                    runSpacing: 0.0,
-                                    alignment: WrapAlignment.start,
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.start,
-                                    direction: Axis.horizontal,
-                                    runAlignment: WrapAlignment.start,
-                                    verticalDirection: VerticalDirection.down,
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      wrapWithModel(
-                                        model: _model.behaviorChipModel1,
-                                        updateCallback: () =>
-                                            safeSetState(() {}),
-                                        child: BehaviorChipWidget(
-                                          selected: _model.behaviors
-                                              .contains('Sueño'),
-                                          onTap: () async {
-                                            _model.toggleBehavior('Sueño');
-                                            safeSetState(() {});
-                                          },
-                                          icon: Icon(
-                                            Icons.bed_rounded,
-                                            color: FlutterFlowTheme.of(context)
-                                                .primaryText,
-                                            size: 18.0,
-                                          ),
-                                          label: 'Sueño',
-                                        ),
-                                      ),
-                                      wrapWithModel(
-                                        model: _model.behaviorChipModel2,
-                                        updateCallback: () =>
-                                            safeSetState(() {}),
-                                        child: BehaviorChipWidget(
-                                          selected: _model.behaviors
-                                              .contains('Alimentación'),
-                                          onTap: () async {
-                                            _model
-                                                .toggleBehavior('Alimentación');
-                                            safeSetState(() {});
-                                          },
-                                          icon: Icon(
-                                            Icons.restaurant_rounded,
-                                            color: FlutterFlowTheme.of(context)
-                                                .primaryText,
-                                            size: 18.0,
-                                          ),
-                                          label: 'Alimentación',
-                                        ),
-                                      ),
-                                      wrapWithModel(
-                                        model: _model.behaviorChipModel3,
-                                        updateCallback: () =>
-                                            safeSetState(() {}),
-                                        child: BehaviorChipWidget(
-                                          selected: _model.behaviors
-                                              .contains('Socialización'),
-                                          onTap: () async {
-                                            _model.toggleBehavior(
-                                                'Socialización');
-                                            safeSetState(() {});
-                                          },
-                                          icon: Icon(
-                                            Icons.group_rounded,
-                                            color: FlutterFlowTheme.of(context)
-                                                .primaryText,
-                                            size: 18.0,
-                                          ),
-                                          label: 'Socialización',
-                                        ),
-                                      ),
-                                      wrapWithModel(
-                                        model: _model.behaviorChipModel4,
-                                        updateCallback: () =>
-                                            safeSetState(() {}),
-                                        child: BehaviorChipWidget(
-                                          selected: _model.behaviors
-                                              .contains('Ejercicio'),
-                                          onTap: () async {
-                                            _model.toggleBehavior('Ejercicio');
-                                            safeSetState(() {});
-                                          },
-                                          icon: Icon(
-                                            Icons.self_improvement_rounded,
-                                            color: FlutterFlowTheme.of(context)
-                                                .primaryText,
-                                            size: 18.0,
-                                          ),
-                                          label: 'Ejercicio',
-                                        ),
-                                      ),
-                                      wrapWithModel(
-                                        model: _model.behaviorChipModel5,
-                                        updateCallback: () =>
-                                            safeSetState(() {}),
-                                        child: BehaviorChipWidget(
-                                          selected: _model.behaviors
-                                              .contains('Trabajo/Estudio'),
-                                          onTap: () async {
-                                            _model.toggleBehavior(
-                                                'Trabajo/Estudio');
-                                            safeSetState(() {});
-                                          },
-                                          icon: Icon(
-                                            Icons.work_rounded,
-                                            color: FlutterFlowTheme.of(context)
-                                                .primaryText,
-                                            size: 18.0,
-                                          ),
-                                          label: 'Trabajo/Estudio',
-                                        ),
-                                      ),
-                                      ..._model.customBehaviors.map(
-                                        (behaviorLabel) => GestureDetector(
-                                          key: ValueKey(behaviorLabel),
-                                          onLongPress: () {
-                                            _model.removeCustomBehavior(
-                                                behaviorLabel);
-                                            safeSetState(() {});
-                                          },
-                                          child: BehaviorChipWidget(
-                                            selected: _model.behaviors
-                                                .contains(behaviorLabel),
-                                            onTap: () async {
-                                              _model.toggleBehavior(
-                                                  behaviorLabel);
-                                              safeSetState(() {});
-                                            },
-                                            icon: Icon(
-                                              Icons.label_rounded,
-                                              color: FlutterFlowTheme.of(
-                                                      context)
-                                                  .primaryText,
-                                              size: 18.0,
-                                            ),
-                                            label: behaviorLabel,
-                                          ),
-                                        ),
-                                      ),
-                                      InkWell(
-                                        splashColor: Colors.transparent,
-                                        focusColor: Colors.transparent,
-                                        hoverColor: Colors.transparent,
-                                        highlightColor: Colors.transparent,
-                                        borderRadius:
-                                            BorderRadius.circular(24.0),
-                                        onTap: _showAddBehaviorDialog,
-                                        child: Padding(
-                                          padding:
-                                              EdgeInsetsDirectional.fromSTEB(
-                                                  0.0, 0.0, 4.0, 8.0),
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: FlutterFlowTheme.of(
-                                                      context)
-                                                  .secondaryBackground,
-                                              borderRadius:
-                                                  BorderRadius.circular(24.0),
-                                              shape: BoxShape.rectangle,
-                                              border: Border.all(
-                                                color: FlutterFlowTheme.of(
-                                                        context)
-                                                    .primary,
-                                                width: 1.0,
-                                              ),
-                                            ),
-                                            child: Padding(
-                                              padding: EdgeInsetsDirectional
-                                                  .fromSTEB(
-                                                      8.0, 16.0, 8.0, 16.0),
-                                              child: Row(
-                                                mainAxisSize:
-                                                    MainAxisSize.min,
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.center,
-                                                children: [
-                                                  Icon(
-                                                    Icons.add_rounded,
-                                                    color: FlutterFlowTheme.of(
-                                                            context)
-                                                        .primary,
-                                                    size: 18.0,
-                                                  ),
-                                                  Text(
-                                                    'Agregar',
-                                                    style: FlutterFlowTheme.of(
-                                                            context)
-                                                        .labelMedium
-                                                        .override(
-                                                          font: GoogleFonts
-                                                              .outfit(),
-                                                          color: FlutterFlowTheme
-                                                                  .of(context)
-                                                              .primary,
-                                                          letterSpacing: 0.0,
-                                                        ),
-                                                  ),
-                                                ].divide(
-                                                    SizedBox(width: 4.0)),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ].divide(SizedBox(height: 16.0)),
-                              ),
                               Container(
                                 height: 24.0,
                               ),
@@ -980,20 +720,15 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                             .inputTextController?.text
                                             .trim() ??
                                         '';
-                                    await RecordsRecord.collection.doc().set({
-                                      ...createRecordsRecordData(
-                                        emotion: _model.selectedEmotion,
-                                        description: description,
-                                        timestamp: getCurrentTimestamp,
-                                        intensity: _model.intensityValue,
-                                        userRef: currentUserReference,
-                                      ),
-                                      ...mapToFirestore(
-                                        {
-                                          'behaviors': _model.behaviors,
-                                        },
-                                      ),
-                                    });
+                                    await RecordsRecord.collection.doc().set(
+                                          createRecordsRecordData(
+                                            emotion: _model.selectedEmotion,
+                                            description: description,
+                                            timestamp: getCurrentTimestamp,
+                                            intensity: _model.intensityValue,
+                                            userRef: currentUserReference,
+                                          ),
+                                        );
 
                                     if (!context.mounted) return;
                                     _model.resetForm();

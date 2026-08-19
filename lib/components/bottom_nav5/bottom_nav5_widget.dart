@@ -86,8 +86,10 @@ class _BottomNav5WidgetState extends State<BottomNav5Widget> {
                       color: FlutterFlowTheme.of(context).primaryText,
                       size: 24.0,
                     ),
-                    target: 'emotional_record',
-                    selected: currentRoute == EmotionalRecordWidget.routePath,
+                    target: 'register_hub',
+                    selected: currentRoute == RegisterHubWidget.routePath ||
+                        currentRoute == EmotionalRecordWidget.routePath ||
+                        currentRoute == BehavioralRecordWidget.routePath,
                   ),
                 ),
               ),

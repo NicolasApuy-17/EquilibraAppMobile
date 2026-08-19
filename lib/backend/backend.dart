@@ -7,6 +7,7 @@ import 'schema/util/firestore_util.dart';
 
 import 'schema/goals_record.dart';
 import 'schema/records_record.dart';
+import 'schema/behavioral_records_record.dart';
 import 'schema/tasks_record.dart';
 import 'schema/user_prefs_record.dart';
 import 'schema/users_record.dart';
@@ -20,6 +21,7 @@ export 'schema/util/schema_util.dart';
 
 export 'schema/goals_record.dart';
 export 'schema/records_record.dart';
+export 'schema/behavioral_records_record.dart';
 export 'schema/tasks_record.dart';
 export 'schema/user_prefs_record.dart';
 export 'schema/users_record.dart';
@@ -56,6 +58,44 @@ Future<List<RecordsRecord>> queryRecordsRecordOnce({
     queryCollectionOnce(
       RecordsRecord.collection,
       RecordsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query BehavioralRecordsRecords (as a Stream and as a Future).
+/// Kept entirely separate from RecordsRecord (emotional records) on purpose.
+Future<int> queryBehavioralRecordsRecordCount({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      BehavioralRecordsRecord.collection,
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<BehavioralRecordsRecord>> queryBehavioralRecordsRecord({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      BehavioralRecordsRecord.collection,
+      BehavioralRecordsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<BehavioralRecordsRecord>> queryBehavioralRecordsRecordOnce({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      BehavioralRecordsRecord.collection,
+      BehavioralRecordsRecord.fromSnapshot,
       queryBuilder: queryBuilder,
       limit: limit,
       singleRecord: singleRecord,

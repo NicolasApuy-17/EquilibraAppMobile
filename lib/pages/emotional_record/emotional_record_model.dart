@@ -1,6 +1,5 @@
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
-import '/components/behavior_chip/behavior_chip_widget.dart';
 import '/components/bottom_nav/bottom_nav_widget.dart';
 import '/components/button/button_widget.dart';
 import '/components/emotion_pill_clean_widget.dart';
@@ -20,46 +19,6 @@ import 'package:provider/provider.dart';
 
 class EmotionalRecordModel extends FlutterFlowModel<EmotionalRecordWidget> {
   ///  Local state fields for this page.
-
-  static const List<String> predeterminedBehaviors = [
-    'Sueño',
-    'Alimentación',
-    'Socialización',
-    'Ejercicio',
-    'Trabajo/Estudio',
-  ];
-
-  List<String> behaviors = [];
-  void toggleBehavior(String item) {
-    if (behaviors.contains(item)) {
-      behaviors.remove(item);
-    } else {
-      behaviors.add(item);
-    }
-  }
-
-  // Conductas agregadas manualmente por el paciente (no predeterminadas).
-  List<String> customBehaviors = [];
-
-  /// Agrega una conducta personalizada y la selecciona automáticamente.
-  /// Devuelve false si el nombre está vacío o ya existe (sin distinguir
-  /// mayúsculas/minúsculas).
-  bool addCustomBehavior(String label) {
-    final trimmed = label.trim();
-    if (trimmed.isEmpty) return false;
-    final alreadyExists = predeterminedBehaviors
-            .any((b) => b.toLowerCase() == trimmed.toLowerCase()) ||
-        customBehaviors.any((b) => b.toLowerCase() == trimmed.toLowerCase());
-    if (alreadyExists) return false;
-    customBehaviors.add(trimmed);
-    behaviors.add(trimmed);
-    return true;
-  }
-
-  void removeCustomBehavior(String label) {
-    customBehaviors.remove(label);
-    behaviors.remove(label);
-  }
 
   static const List<String> predeterminedEmotions = [
     'Alegría',
@@ -106,8 +65,6 @@ class EmotionalRecordModel extends FlutterFlowModel<EmotionalRecordWidget> {
     customEmotions = [];
     intensityValue = 1.0;
     sliderModel.sliderValue = 1.0;
-    behaviors = [];
-    customBehaviors = [];
     textFieldModel.inputTextController?.clear();
   }
 
@@ -129,16 +86,6 @@ class EmotionalRecordModel extends FlutterFlowModel<EmotionalRecordWidget> {
   late SliderModel sliderModel;
   // Model for TextField.
   late TextFieldModel textFieldModel;
-  // Model for BehaviorChip.
-  late BehaviorChipModel behaviorChipModel1;
-  // Model for BehaviorChip.
-  late BehaviorChipModel behaviorChipModel2;
-  // Model for BehaviorChip.
-  late BehaviorChipModel behaviorChipModel3;
-  // Model for BehaviorChip.
-  late BehaviorChipModel behaviorChipModel4;
-  // Model for BehaviorChip.
-  late BehaviorChipModel behaviorChipModel5;
   // Model for Button.
   late ButtonModel buttonModel;
   // Model for BottomNav.
@@ -160,11 +107,6 @@ class EmotionalRecordModel extends FlutterFlowModel<EmotionalRecordWidget> {
         createModel(context, () => EmotionPillCleanModel());
     sliderModel = createModel(context, () => SliderModel());
     textFieldModel = createModel(context, () => TextFieldModel());
-    behaviorChipModel1 = createModel(context, () => BehaviorChipModel());
-    behaviorChipModel2 = createModel(context, () => BehaviorChipModel());
-    behaviorChipModel3 = createModel(context, () => BehaviorChipModel());
-    behaviorChipModel4 = createModel(context, () => BehaviorChipModel());
-    behaviorChipModel5 = createModel(context, () => BehaviorChipModel());
     buttonModel = createModel(context, () => ButtonModel());
     bottomNavModel = createModel(context, () => BottomNavModel());
   }
@@ -179,11 +121,6 @@ class EmotionalRecordModel extends FlutterFlowModel<EmotionalRecordWidget> {
     emotionPillCleanModel6.dispose();
     sliderModel.dispose();
     textFieldModel.dispose();
-    behaviorChipModel1.dispose();
-    behaviorChipModel2.dispose();
-    behaviorChipModel3.dispose();
-    behaviorChipModel4.dispose();
-    behaviorChipModel5.dispose();
     buttonModel.dispose();
     bottomNavModel.dispose();
   }

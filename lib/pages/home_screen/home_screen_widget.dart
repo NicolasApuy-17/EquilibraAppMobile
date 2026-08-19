@@ -840,7 +840,7 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                             ),
                                             InkWell(
                                               onTap: () async {
-                                                context.goNamed(EmotionalRecordWidget.routeName);
+                                                context.goNamed(RegisterHubWidget.routeName);
                                               },
                                               child: Column(
                                               mainAxisSize: MainAxisSize.min,
