@@ -163,6 +163,7 @@ class _WeeklyProgressWidgetState extends State<WeeklyProgressWidget> {
                                   mainAxisAlignment: MainAxisAlignment.start,
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
+                                    _ProgressBackButton(),
                                     Row(
                                       mainAxisSize: MainAxisSize.max,
                                       mainAxisAlignment:
@@ -1094,6 +1095,33 @@ class _WeeklyProgressWidgetState extends State<WeeklyProgressWidget> {
   }
 }
 
+class _ProgressBackButton extends StatelessWidget {
+  const _ProgressBackButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Padding(
+        padding: EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 8.0),
+        child: FlutterFlowIconButton(
+          borderRadius: 8.0,
+          buttonSize: 40.0,
+          fillColor: Colors.transparent,
+          icon: Icon(
+            Icons.arrow_back_rounded,
+            color: FlutterFlowTheme.of(context).primaryText,
+            size: 24.0,
+          ),
+          onPressed: () async {
+            context.safePop();
+          },
+        ),
+      ),
+    );
+  }
+}
+
 class _ProgressErrorState extends StatelessWidget {
   const _ProgressErrorState({
     required this.bottomNavModel,
@@ -1109,6 +1137,7 @@ class _ProgressErrorState extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _ProgressBackButton(),
         Padding(
           padding: EdgeInsets.symmetric(vertical: 64.0),
           child: Column(
@@ -1154,6 +1183,7 @@ class _ProgressEmptyState extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _ProgressBackButton(),
         Text(
           'Tu progreso semanal',
           style: FlutterFlowTheme.of(context).headlineMedium.override(

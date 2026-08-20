@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/flutter_flow/custom_functions.dart' as functions;
@@ -5,12 +7,15 @@ import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 /// Lets the user update their basic profile info: display name, phone
-/// number, and profile photo (via an image URL, since this project has no
-/// image upload / storage dependency wired up yet).
+/// number, and profile photo. The photo is picked from the device's own
+/// gallery, uploaded to Firebase Storage under this user's folder, and the
+/// resulting download URL is what gets saved to their profile.
 class EditProfileWidget extends StatefulWidget {
   const EditProfileWidget({super.key});
 
@@ -24,31 +29,87 @@ class EditProfileWidget extends StatefulWidget {
 class _EditProfileWidgetState extends State<EditProfileWidget> {
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
-  late TextEditingController _photoUrlController;
 
   bool _isSaving = false;
+  bool _isUploadingPhoto = false;
   String? _errorText;
+
+  // Local path of the picked image (shown immediately while it uploads).
+  File? _pickedPhotoFile;
+  // Firebase Storage download URL once the picked photo finishes uploading.
+  // Null means "no new photo was picked" — the existing one is kept as-is.
+  String? _uploadedPhotoUrl;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: currentUserDisplayName);
     _phoneController = TextEditingController(text: currentPhoneNumber);
-    _photoUrlController = TextEditingController(text: currentUserPhoto);
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _photoUrlController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    final userRef = currentUserReference;
+    if (userRef == null) return;
+
+    XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorText = 'No se pudo abrir la galería. Intenta nuevamente.';
+      });
+      return;
+    }
+    if (picked == null || !mounted) return;
+
+    final file = File(picked.path);
+    setState(() {
+      _pickedPhotoFile = file;
+      _isUploadingPhoto = true;
+      _errorText = null;
+    });
+
+    try {
+      final storageRef = FirebaseStorage.instance
+          .ref('users/${userRef.id}/profile_photo.jpg');
+      await storageRef.putFile(file);
+      final downloadUrl = await storageRef.getDownloadURL();
+      if (!mounted) return;
+      setState(() {
+        _uploadedPhotoUrl = downloadUrl;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _pickedPhotoFile = null;
+        _errorText = 'No se pudo subir la imagen. Intenta nuevamente.';
+      });
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
   }
 
   Future<void> _submit() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       setState(() => _errorText = 'El nombre no puede estar vacío.');
+      return;
+    }
+    if (_isUploadingPhoto) {
+      setState(() => _errorText = 'Espera a que termine de subirse la foto.');
       return;
     }
     setState(() {
@@ -59,7 +120,7 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
       await updateUserProfile(
         displayName: name,
         phoneNumber: _phoneController.text.trim(),
-        photoUrl: _photoUrlController.text.trim(),
+        photoUrl: _uploadedPhotoUrl,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -129,13 +190,30 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Center(
-                        child: AnimatedBuilder(
-                          animation: _photoUrlController,
-                          builder: (context, _) => _AvatarPreview(
-                            photoUrl: _photoUrlController.text.trim(),
-                            fallbackText: _nameController.text.isNotEmpty
-                                ? _nameController.text
-                                : currentUserEmail,
+                        child: _AvatarPicker(
+                          photoUrl: _uploadedPhotoUrl ?? currentUserPhoto,
+                          localFile: _pickedPhotoFile,
+                          isUploading: _isUploadingPhoto,
+                          fallbackText: _nameController.text.isNotEmpty
+                              ? _nameController.text
+                              : currentUserEmail,
+                          onTap: _isUploadingPhoto ? null : _pickAndUploadPhoto,
+                        ),
+                      ),
+                      Center(
+                        child: Padding(
+                          padding: EdgeInsetsDirectional.fromSTEB(
+                              0.0, 10.0, 0.0, 0.0),
+                          child: Text(
+                            'Toca la foto para elegir una nueva desde tu galería.',
+                            textAlign: TextAlign.center,
+                            style:
+                                FlutterFlowTheme.of(context).bodySmall.override(
+                                      font: GoogleFonts.outfit(),
+                                      color: FlutterFlowTheme.of(context)
+                                          .secondaryText,
+                                      letterSpacing: 0.0,
+                                    ),
                           ),
                         ),
                       ),
@@ -153,32 +231,6 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
                         hintText: 'Ej. +51 987 654 321',
                         icon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
-                      ),
-                      SizedBox(height: 16.0),
-                      _FieldLabel('URL de foto de perfil (opcional)'),
-                      _AppTextField(
-                        controller: _photoUrlController,
-                        hintText: 'https://...',
-                        icon: Icons.image_outlined,
-                        keyboardType: TextInputType.url,
-                        onChanged: (_) => setState(() {}),
-                      ),
-                      Padding(
-                        padding:
-                            EdgeInsetsDirectional.fromSTEB(4.0, 6.0, 4.0, 0.0),
-                        child: Text(
-                          'Pega el enlace de una imagen para usarla como tu '
-                          'foto de perfil. Si lo dejas vacío, se mostrarán '
-                          'tus iniciales.',
-                          style:
-                              FlutterFlowTheme.of(context).bodySmall.override(
-                                    font: GoogleFonts.outfit(),
-                                    color:
-                                        FlutterFlowTheme.of(context)
-                                            .secondaryText,
-                                    letterSpacing: 0.0,
-                                  ),
-                        ),
                       ),
                       if (_errorText != null)
                         Padding(
@@ -319,14 +371,22 @@ class _AppTextField extends StatelessWidget {
   }
 }
 
-class _AvatarPreview extends StatelessWidget {
-  const _AvatarPreview({
+/// Tappable avatar that opens the device gallery and shows an upload
+/// progress spinner while the picked photo is being saved.
+class _AvatarPicker extends StatelessWidget {
+  const _AvatarPicker({
     required this.photoUrl,
+    required this.localFile,
+    required this.isUploading,
     required this.fallbackText,
+    required this.onTap,
   });
 
   final String photoUrl;
+  final File? localFile;
+  final bool isUploading;
   final String fallbackText;
+  final VoidCallback? onTap;
 
   bool get _hasValidUrl =>
       photoUrl.isNotEmpty &&
@@ -334,36 +394,88 @@ class _AvatarPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 100.0,
-      height: 100.0,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(9999.0),
-        shape: BoxShape.rectangle,
-        border: Border.all(
-          color: FlutterFlowTheme.of(context).primary20,
-          width: 4.0,
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(4.0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(9999.0),
-          child: _hasValidUrl
-              ? CachedNetworkImage(
-                  imageUrl: photoUrl,
-                  width: 80.0,
-                  height: 80.0,
-                  fit: BoxFit.cover,
-                  errorWidget: (context, url, error) => _InitialsCircle(
-                    text: fallbackText,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(9999.0),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 100.0,
+            height: 100.0,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(9999.0),
+              shape: BoxShape.rectangle,
+              border: Border.all(
+                color: FlutterFlowTheme.of(context).primary20,
+                width: 4.0,
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(4.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(9999.0),
+                child: localFile != null
+                    ? Image.file(
+                        localFile!,
+                        width: 80.0,
+                        height: 80.0,
+                        fit: BoxFit.cover,
+                      )
+                    : (_hasValidUrl
+                        ? CachedNetworkImage(
+                            imageUrl: photoUrl,
+                            width: 80.0,
+                            height: 80.0,
+                            fit: BoxFit.cover,
+                            errorWidget: (context, url, error) =>
+                                _InitialsCircle(text: fallbackText),
+                            placeholder: (context, url) =>
+                                _InitialsCircle(text: fallbackText),
+                          )
+                        : _InitialsCircle(text: fallbackText)),
+              ),
+            ),
+          ),
+          if (isUploading)
+            Container(
+              width: 100.0,
+              height: 100.0,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.35),
+                shape: BoxShape.circle,
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(32.0),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                ),
+              ),
+            )
+          else
+            Positioned(
+              bottom: 0.0,
+              right: 0.0,
+              child: Container(
+                width: 28.0,
+                height: 28.0,
+                decoration: BoxDecoration(
+                  color: FlutterFlowTheme.of(context).primary,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: FlutterFlowTheme.of(context).primaryBackground,
+                    width: 2.0,
                   ),
-                  placeholder: (context, url) => _InitialsCircle(
-                    text: fallbackText,
-                  ),
-                )
-              : _InitialsCircle(text: fallbackText),
-        ),
+                ),
+                child: Icon(
+                  Icons.photo_camera_rounded,
+                  color: FlutterFlowTheme.of(context).onPrimary,
+                  size: 14.0,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

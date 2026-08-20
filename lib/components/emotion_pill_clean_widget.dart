@@ -81,6 +81,9 @@ class _EmotionPillCleanWidgetState extends State<EmotionPillCleanWidget> {
             child: Text(
               widget!.label,
               textAlign: TextAlign.center,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible,
               style: FlutterFlowTheme.of(context).bodyMedium.override(
                     font: GoogleFonts.outfit(
                       fontWeight: FontWeight.w500,

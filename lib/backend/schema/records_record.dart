@@ -47,12 +47,17 @@ class RecordsRecord extends FirestoreRecord {
   bool hasUserRef() => _userRef != null;
 
   void _initializeFields() {
-    _emotion = snapshotData['emotion'] as String?;
-    _description = snapshotData['description'] as String?;
-    _behaviors = getDataList(snapshotData['behaviors']);
-    _timestamp = snapshotData['timestamp'] as DateTime?;
-    _intensity = castToType<double>(snapshotData['intensity']);
-    _userRef = snapshotData['userRef'] as DocumentReference?;
+    _emotion = safeGet(() => snapshotData['emotion'] as String?);
+    _description = safeGet(() => snapshotData['description'] as String?);
+    _behaviors = safeGet(() => getDataList(snapshotData['behaviors']));
+    _timestamp = safeGet(() => snapshotData['timestamp'] as DateTime?) ??
+        safeGet(() {
+          final raw = snapshotData['timestamp'];
+          return raw is Timestamp ? raw.toDate() : null;
+        });
+    _intensity = safeGet(() => castToType<double>(snapshotData['intensity']));
+    _userRef =
+        safeGet(() => snapshotData['userRef'] as DocumentReference?);
   }
 
   static CollectionReference get collection =>

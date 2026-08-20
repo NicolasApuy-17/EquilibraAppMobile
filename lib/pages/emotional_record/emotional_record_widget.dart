@@ -373,7 +373,6 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         ),
                                       ),
                                       Container(
-                                        width: 88.0,
                                         height: 40.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
@@ -400,7 +399,6 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         ),
                                       ),
                                       Container(
-                                        width: 88.0,
                                         height: 40.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
