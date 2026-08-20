@@ -8,6 +8,13 @@ service cloud.firestore {
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
+    match /behavioral_records/{document} {
+      allow create: if request.auth != null &&
+        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      allow read, update, delete: if request.auth != null &&
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
     match /user_prefs/{document} {
       allow create: if request.auth.uid == document;
       allow read: if request.auth.uid == document;

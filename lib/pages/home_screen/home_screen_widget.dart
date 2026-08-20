@@ -470,7 +470,7 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                     Colors.transparent,
                                                 onTap: () async {
                                                   context.pushNamed(
-                                                      EmotionalRecordWidget
+                                                      RegisterHubWidget
                                                           .routeName);
                                                 },
                                                 child: wrapWithModel(
@@ -479,8 +479,7 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                   updateCallback: () =>
                                                       safeSetState(() {}),
                                                   child: FeatureCardWidget(
-                                                    target:
-                                                        'navigate(emotional_record)',
+                                                    target: 'navigate(register_hub)',
                                                     iconBg: FlutterFlowTheme.of(
                                                             context)
                                                         .primary15,
@@ -499,7 +498,7 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                             .primary,
                                                     title: 'Registrar',
                                                     subtitle:
-                                                        'Anota qué sientes y qué pasó',
+                                                        'Emoción o conducta',
                                                   ),
                                                 ),
                                               ),

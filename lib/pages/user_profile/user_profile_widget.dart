@@ -193,6 +193,20 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.center,
                                     children: [
+                                      FlutterFlowIconButton(
+                                        borderRadius: 8.0,
+                                        buttonSize: 40.0,
+                                        fillColor: Colors.transparent,
+                                        icon: Icon(
+                                          Icons.arrow_back_rounded,
+                                          color: FlutterFlowTheme.of(context)
+                                              .primaryText,
+                                          size: 24.0,
+                                        ),
+                                        onPressed: () async {
+                                          context.safePop();
+                                        },
+                                      ),
                                       Text(
                                         'Mi Perfil',
                                         style: FlutterFlowTheme.of(context)

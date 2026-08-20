@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '/flutter_flow/flutter_flow_theme.dart';
+import '/flutter_flow/flutter_flow_util.dart';
 
 /// Shared header for every grounding-exercise page: back button + title.
 class ExerciseHeader extends StatelessWidget {
@@ -18,7 +19,7 @@ class ExerciseHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           InkWell(
-            onTap: () => Navigator.of(context).maybePop(),
+            onTap: () => context.safePop(),
             borderRadius: BorderRadius.circular(20.0),
             child: Container(
               width: 40.0,

@@ -279,6 +279,7 @@ Stream<List<T>> queryCollection<T>(
   }
   return query.snapshots().handleError((err) {
     print('Error querying $collection: $err');
+    throw err;
   }).map((s) => s.docs
       .map(
         (d) => safeGet(
