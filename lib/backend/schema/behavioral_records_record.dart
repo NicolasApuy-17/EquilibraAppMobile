@@ -60,15 +60,17 @@ class BehavioralRecordsRecord extends FirestoreRecord {
   bool hasUserRef() => _userRef != null;
 
   void _initializeFields() {
-    _date = safeGet(() => snapshotData['date'] as DateTime?);
-    _behaviorType = safeGet(() => snapshotData['behaviorType'] as String?);
-    _value = safeGet(() => snapshotData['value'] as String?);
-    _quantity =
-        safeGet(() => castToType<double>(snapshotData['quantity']));
-    _notes = safeGet(() => snapshotData['notes'] as String?);
-    _createdAt = safeGet(() => snapshotData['createdAt'] as DateTime?);
-    _userRef =
-        safeGet(() => snapshotData['userRef'] as DocumentReference?);
+    _date = safeGet<DateTime?>(() => snapshotData['date'] as DateTime?);
+    _behaviorType =
+        safeGet<String?>(() => snapshotData['behaviorType'] as String?);
+    _value = safeGet<String?>(() => snapshotData['value'] as String?);
+    _quantity = safeGet<double?>(
+        () => castToType<double>(snapshotData['quantity']));
+    _notes = safeGet<String?>(() => snapshotData['notes'] as String?);
+    _createdAt =
+        safeGet<DateTime?>(() => snapshotData['createdAt'] as DateTime?);
+    _userRef = safeGet<DocumentReference?>(
+        () => snapshotData['userRef'] as DocumentReference?);
   }
 
   static CollectionReference get collection =>

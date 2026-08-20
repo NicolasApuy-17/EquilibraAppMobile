@@ -47,17 +47,21 @@ class RecordsRecord extends FirestoreRecord {
   bool hasUserRef() => _userRef != null;
 
   void _initializeFields() {
-    _emotion = safeGet(() => snapshotData['emotion'] as String?);
-    _description = safeGet(() => snapshotData['description'] as String?);
-    _behaviors = safeGet(() => getDataList(snapshotData['behaviors']));
-    _timestamp = safeGet(() => snapshotData['timestamp'] as DateTime?) ??
-        safeGet(() {
-          final raw = snapshotData['timestamp'];
-          return raw is Timestamp ? raw.toDate() : null;
-        });
-    _intensity = safeGet(() => castToType<double>(snapshotData['intensity']));
-    _userRef =
-        safeGet(() => snapshotData['userRef'] as DocumentReference?);
+    _emotion = safeGet<String?>(() => snapshotData['emotion'] as String?);
+    _description =
+        safeGet<String?>(() => snapshotData['description'] as String?);
+    _behaviors = safeGet<List<String>?>(
+        () => getDataList<String>(snapshotData['behaviors']));
+    _timestamp =
+        safeGet<DateTime?>(() => snapshotData['timestamp'] as DateTime?) ??
+            safeGet<DateTime?>(() {
+              final raw = snapshotData['timestamp'];
+              return raw is Timestamp ? raw.toDate() : null;
+            });
+    _intensity =
+        safeGet<double?>(() => castToType<double>(snapshotData['intensity']));
+    _userRef = safeGet<DocumentReference?>(
+        () => snapshotData['userRef'] as DocumentReference?);
   }
 
   static CollectionReference get collection =>
