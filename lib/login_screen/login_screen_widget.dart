@@ -395,11 +395,17 @@ class _LoginScreenWidgetState extends State<LoginScreenWidget> {
                           ),
                           FFButtonWidget(
                             onPressed: () async {
+                              if (_model.formKey.currentState == null ||
+                                  !_model.formKey.currentState!.validate()) {
+                                return;
+                              }
+
                               GoRouter.of(context).prepareAuthEvent();
 
                               final user = await authManager.signInWithEmail(
                                 context,
-                                _model.correoElectronicoTextController.text,
+                                _model.correoElectronicoTextController.text
+                                    .trim(),
                                 _model.contrasenaTextController.text,
                               );
                               if (user == null) {

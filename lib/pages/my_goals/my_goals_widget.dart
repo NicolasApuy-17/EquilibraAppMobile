@@ -4,6 +4,8 @@ import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/utils/date_format_es.dart';
+import '/utils/error_messages.dart';
+import '/utils/validators.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -54,22 +56,36 @@ class _MyGoalsWidgetState extends State<MyGoalsWidget> {
         ) ??
         false;
     if (confirmed) {
-      await goal.reference.delete();
+      try {
+        await goal.reference.delete();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(genericSaveErrorMessage('eliminar el objetivo'))),
+        );
+      }
     }
   }
 
   Future<void> _toggleComplete(GoalsRecord goal) async {
     final nowCompleted = !goal.completed;
-    if (nowCompleted) {
-      await goal.reference.update(createGoalsRecordData(
-        completed: true,
-        completedTime: getCurrentTimestamp,
-      ));
-    } else {
-      await goal.reference.update({
-        'completed': false,
-        'completedTime': FieldValue.delete(),
-      });
+    try {
+      if (nowCompleted) {
+        await goal.reference.update(createGoalsRecordData(
+          completed: true,
+          completedTime: getCurrentTimestamp,
+        ));
+      } else {
+        await goal.reference.update({
+          'completed': false,
+          'completedTime': FieldValue.delete(),
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(genericSaveErrorMessage('actualizar el objetivo'))),
+      );
     }
   }
 
@@ -109,15 +125,22 @@ class _MyGoalsWidgetState extends State<MyGoalsWidget> {
                       ),
                       onPressed: () => context.safePop(),
                     ),
-                    Text(
-                      'Mis Objetivos',
-                      style: FlutterFlowTheme.of(context).titleLarge.override(
-                            font:
-                                GoogleFonts.outfit(fontWeight: FontWeight.bold),
-                            color: FlutterFlowTheme.of(context).primaryText,
-                            letterSpacing: 0.0,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    Expanded(
+                      child: Text(
+                        'Mis Objetivos',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            FlutterFlowTheme.of(context).titleLarge.override(
+                                  font: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.bold),
+                                  color: FlutterFlowTheme.of(context)
+                                      .primaryText,
+                                  letterSpacing: 0.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
                     ),
                     SizedBox(width: 40.0),
                   ],
@@ -600,11 +623,12 @@ class _GoalFormSheetState extends State<_GoalFormSheet> {
   }
 
   Future<void> _pickDate() async {
+    final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: _targetDate ?? DateTime.now(),
-      firstDate: DateTime(DateTime.now().year - 1),
-      lastDate: DateTime(DateTime.now().year + 5),
+      initialDate: _targetDate ?? now,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(now.year + 5),
     );
     if (picked != null) {
       setState(() => _targetDate = picked);
@@ -612,11 +636,28 @@ class _GoalFormSheetState extends State<_GoalFormSheet> {
   }
 
   Future<void> _submit() async {
-    final title = _titleController.text.trim();
-    if (title.isEmpty) {
-      setState(() => _errorText = 'El título es obligatorio.');
+    final titleError = validateFreeText(
+      _titleController.text,
+      maxLength: 80,
+      required: true,
+      requiredMessage: 'El título es obligatorio.',
+    );
+    if (titleError != null) {
+      setState(() => _errorText = titleError);
       return;
     }
+    final descriptionError =
+        validateFreeText(_descriptionController.text, maxLength: 500, required: false);
+    if (descriptionError != null) {
+      setState(() => _errorText = descriptionError);
+      return;
+    }
+    final dateError = validateGoalDate(_targetDate);
+    if (dateError != null) {
+      setState(() => _errorText = dateError);
+      return;
+    }
+    final title = normalizeWhitespace(_titleController.text);
     setState(() {
       _isSaving = true;
       _errorText = null;
@@ -643,7 +684,7 @@ class _GoalFormSheetState extends State<_GoalFormSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorText = 'No se pudo guardar el objetivo. Intenta nuevamente.';
+          _errorText = genericSaveErrorMessage('guardar el objetivo');
         });
       }
     } finally {

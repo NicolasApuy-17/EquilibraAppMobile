@@ -4,6 +4,7 @@ import '/components/bottom_nav/bottom_nav_widget.dart';
 import '/components/button/button_widget.dart';
 import '/components/text_field/text_field_widget.dart';
 import '/flutter_flow/flutter_flow_util.dart';
+import '/utils/validators.dart';
 import 'behavioral_record_widget.dart' show BehavioralRecordWidget;
 import 'package:flutter/material.dart';
 
@@ -27,6 +28,7 @@ class BehaviorTypeConfig {
     this.quantityLabel,
     this.quantityHint,
     this.quantityUnit,
+    this.quantityMax,
   });
 
   final String label;
@@ -37,6 +39,10 @@ class BehaviorTypeConfig {
   final String? quantityLabel;
   final String? quantityHint;
   final String? quantityUnit;
+
+  /// Upper bound for the quantity field, in [quantityUnit]. Null means no
+  /// quantity is collected for this behavior type.
+  final num? quantityMax;
 }
 
 const List<BehaviorTypeConfig> kPredeterminedBehaviorTypes = [
@@ -52,6 +58,7 @@ const List<BehaviorTypeConfig> kPredeterminedBehaviorTypes = [
     quantityLabel: 'Horas de sueño',
     quantityHint: 'Ej. 7',
     quantityUnit: 'h',
+    quantityMax: 16,
   ),
   BehaviorTypeConfig(
     label: 'Alimentación',
@@ -82,6 +89,7 @@ const List<BehaviorTypeConfig> kPredeterminedBehaviorTypes = [
     quantityLabel: 'Duración',
     quantityHint: 'Ej. 30',
     quantityUnit: 'min',
+    quantityMax: 300,
   ),
   BehaviorTypeConfig(
     label: 'Trabajo/Estudio',
@@ -95,6 +103,7 @@ const List<BehaviorTypeConfig> kPredeterminedBehaviorTypes = [
     quantityLabel: 'Tiempo dedicado',
     quantityHint: 'Ej. 4',
     quantityUnit: 'h',
+    quantityMax: 16,
   ),
 ];
 
@@ -109,10 +118,13 @@ BehaviorTypeConfig customBehaviorTypeConfig(String label) => BehaviorTypeConfig(
       ],
       quantityLabel: 'Cantidad (opcional)',
       quantityHint: 'Ej. 2',
+      quantityMax: 999,
     );
 
 class BehavioralRecordModel extends FlutterFlowModel<BehavioralRecordWidget> {
   ///  Local state fields for this page.
+
+  final formKey = GlobalKey<FormState>();
 
   // Conductas agregadas manualmente por el paciente (no predeterminadas).
   List<String> customBehaviorTypes = [];
@@ -189,7 +201,14 @@ class BehavioralRecordModel extends FlutterFlowModel<BehavioralRecordWidget> {
   @override
   void initState(BuildContext context) {
     quantityFieldModel = createModel(context, () => TextFieldModel());
+    // The quantity field is optional, but when a behavior type is selected
+    // (`selectedConfig`) its unit-specific max is enforced. Read lazily so
+    // the bound changes as the user switches between behavior types.
+    quantityFieldModel.inputTextControllerValidator = (context, val) =>
+        validateQuantity(val, min: 0, max: selectedConfig?.quantityMax);
     notesFieldModel = createModel(context, () => TextFieldModel());
+    notesFieldModel.inputTextControllerValidator = (context, val) =>
+        validateDescription(val, maxLength: 300, required: false);
     buttonModel = createModel(context, () => ButtonModel());
     bottomNavModel = createModel(context, () => BottomNavModel());
   }

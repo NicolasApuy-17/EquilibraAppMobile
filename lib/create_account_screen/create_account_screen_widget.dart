@@ -3,6 +3,7 @@ import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
+import '/utils/validators.dart';
 import 'dart:ui';
 import '/index.dart';
 import 'package:flutter/material.dart';
@@ -508,7 +509,7 @@ class _CreateAccountScreenWidgetState extends State<CreateAccountScreenWidget> {
                                         .fontStyle,
                                   ),
                               textAlign: TextAlign.start,
-                              keyboardType: TextInputType.emailAddress,
+                              keyboardType: TextInputType.visiblePassword,
                               cursorColor:
                                   FlutterFlowTheme.of(context).primaryText,
                               enableInteractiveSelection: true,
@@ -640,7 +641,7 @@ class _CreateAccountScreenWidgetState extends State<CreateAccountScreenWidget> {
                                         .fontStyle,
                                   ),
                               textAlign: TextAlign.start,
-                              keyboardType: TextInputType.emailAddress,
+                              keyboardType: TextInputType.visiblePassword,
                               cursorColor:
                                   FlutterFlowTheme.of(context).primaryText,
                               enableInteractiveSelection: true,
@@ -651,66 +652,50 @@ class _CreateAccountScreenWidgetState extends State<CreateAccountScreenWidget> {
                           ),
                           FFButtonWidget(
                             onPressed: () async {
-                              Function() _navigate = () {};
                               if (_model.formKey.currentState == null ||
                                   !_model.formKey.currentState!.validate()) {
                                 return;
                               }
-                              if (_model.contrasenaTextController.text ==
-                                  _model
-                                      .confirmarContrasenaTextController.text) {
-                                GoRouter.of(context).prepareAuthEvent();
-                                if (_model.contrasenaTextController.text !=
-                                    _model.confirmarContrasenaTextController
-                                        .text) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Passwords don\'t match!',
-                                      ),
-                                    ),
-                                  );
-                                  return;
-                                }
 
-                                final user =
-                                    await authManager.createAccountWithEmail(
-                                  context,
-                                  _model.correoElectronicoTextController.text,
-                                  _model.contrasenaTextController.text,
-                                );
-                                if (user == null) {
-                                  return;
-                                }
+                              GoRouter.of(context).prepareAuthEvent();
 
+                              final user =
+                                  await authManager.createAccountWithEmail(
+                                context,
+                                _model.correoElectronicoTextController.text
+                                    .trim(),
+                                _model.contrasenaTextController.text,
+                              );
+                              if (user == null) {
+                                return;
+                              }
+
+                              try {
                                 await UsersRecord.collection
                                     .doc(user.uid)
                                     .update(createUsersRecordData(
-                                      displayName: _model
-                                          .nombreCompletoTextController.text,
+                                      displayName: normalizeWhitespace(_model
+                                          .nombreCompletoTextController.text),
                                       role: 'paciente',
                                     ));
-
-                                _navigate = () => context.goNamedAuth(
-                                    HomeScreenWidget.routeName,
-                                    context.mounted);
-                              } else {
+                              } catch (e) {
+                                if (!context.mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      'Las contraseñas no coinciden.',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                      ),
+                                      'Tu cuenta se creó, pero no se pudo guardar tu nombre. '
+                                      'Puedes editarlo luego desde tu perfil.',
                                     ),
-                                    duration: Duration(milliseconds: 3000),
+                                    duration: Duration(milliseconds: 4000),
                                     backgroundColor:
                                         FlutterFlowTheme.of(context).error,
                                   ),
                                 );
                               }
 
-                              _navigate();
+                              if (!context.mounted) return;
+                              context.goNamedAuth(
+                                  HomeScreenWidget.routeName, context.mounted);
                             },
                             text: 'Crear cuenta',
                             options: FFButtonOptions(

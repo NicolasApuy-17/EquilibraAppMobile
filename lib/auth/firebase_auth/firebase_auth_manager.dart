@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../auth_manager.dart';
 import '../base_auth_user_provider.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
+import '../../utils/error_messages.dart';
 
 import '/backend/backend.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -72,14 +73,11 @@ class FirebaseAuthManager extends AuthManager
       }
       await currentUser?.delete();
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'requires-recent-login') {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  'Too long since most recent sign in. Sign in again before deleting your account.')),
-        );
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(firebaseAuthErrorMessage(e))),
+      );
     }
   }
 
@@ -96,14 +94,11 @@ class FirebaseAuthManager extends AuthManager
       await currentUser?.updateEmail(email);
       await updateUserDocument(email: email);
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'requires-recent-login') {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  'Too long since most recent sign in. Sign in again before updating your email.')),
-        );
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(firebaseAuthErrorMessage(e))),
+      );
     }
   }
 
@@ -119,12 +114,11 @@ class FirebaseAuthManager extends AuthManager
       }
       await currentUser?.updatePassword(newPassword);
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'requires-recent-login') {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.message!}')),
-        );
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(firebaseAuthErrorMessage(e))),
+      );
     }
   }
 
@@ -136,14 +130,18 @@ class FirebaseAuthManager extends AuthManager
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
+      if (!context.mounted) return null;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.message!}')),
+        SnackBar(content: Text(firebaseAuthErrorMessage(e))),
       );
       return null;
     }
+    if (!context.mounted) return null;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Password reset email sent')),
+      SnackBar(
+          content: Text(
+              'Te enviamos un correo para restablecer tu contraseña.')),
     );
   }
 
@@ -314,16 +312,10 @@ class FirebaseAuthManager extends AuthManager
           ? null
           : EquilibraFirebaseUser.fromUserCredential(userCredential);
     } on FirebaseAuthException catch (e) {
-      final errorMsg = switch (e.code) {
-        'email-already-in-use' =>
-          'Error: The email is already in use by a different account',
-        'INVALID_LOGIN_CREDENTIALS' =>
-          'Error: The supplied auth credential is incorrect, malformed or has expired',
-        _ => 'Error: ${e.message!}',
-      };
+      if (!context.mounted) return null;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMsg)),
+        SnackBar(content: Text(firebaseAuthErrorMessage(e))),
       );
       return null;
     }

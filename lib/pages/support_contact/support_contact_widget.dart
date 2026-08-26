@@ -115,14 +115,20 @@ class SupportContactWidget extends StatelessWidget {
                     ),
                     onPressed: () => context.safePop(),
                   ),
-                  Text(
-                    'Contacto de Apoyo',
-                    style: FlutterFlowTheme.of(context).titleLarge.override(
-                          font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
-                          color: FlutterFlowTheme.of(context).primaryText,
-                          letterSpacing: 0.0,
-                          fontWeight: FontWeight.bold,
-                        ),
+                  Expanded(
+                    child: Text(
+                      'Contacto de Apoyo',
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: FlutterFlowTheme.of(context).titleLarge.override(
+                            font:
+                                GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                            color: FlutterFlowTheme.of(context).primaryText,
+                            letterSpacing: 0.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
                   ),
                   SizedBox(width: 40.0),
                 ],

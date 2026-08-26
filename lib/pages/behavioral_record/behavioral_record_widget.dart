@@ -7,6 +7,7 @@ import '/components/text_field/text_field_widget.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
+import '/utils/validators.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'behavioral_record_model.dart';
@@ -43,51 +44,89 @@ class _BehavioralRecordWidgetState extends State<BehavioralRecordWidget> {
 
   Future<void> _showAddBehaviorTypeDialog() async {
     final controller = TextEditingController();
+    String? errorText;
     final label = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: FlutterFlowTheme.of(context).secondaryBackground,
-          title: Text(
-            'Agregar conducta',
-            style: FlutterFlowTheme.of(context).titleMedium.override(
-                  font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
-                  color: FlutterFlowTheme.of(context).primaryText,
-                  letterSpacing: 0.0,
-                  fontWeight: FontWeight.bold,
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            void trySubmit() {
+              final error = validateLabel(controller.text);
+              if (error != null) {
+                setDialogState(() => errorText = error);
+                return;
+              }
+              Navigator.of(dialogContext).pop(controller.text.trim());
+            }
+
+            return AlertDialog(
+              backgroundColor:
+                  FlutterFlowTheme.of(context).secondaryBackground,
+              title: Text(
+                'Agregar conducta',
+                style: FlutterFlowTheme.of(context).titleMedium.override(
+                      font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                      color: FlutterFlowTheme.of(context).primaryText,
+                      letterSpacing: 0.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    maxLength: 30,
+                    style: TextStyle(
+                        color: FlutterFlowTheme.of(context).primaryText),
+                    decoration: InputDecoration(
+                      hintText: 'Ej. Meditación',
+                      hintStyle: TextStyle(
+                          color: FlutterFlowTheme.of(context).secondaryText),
+                    ),
+                    onChanged: (_) {
+                      if (errorText != null) {
+                        setDialogState(() => errorText = null);
+                      }
+                    },
+                    onSubmitted: (_) => trySubmit(),
+                  ),
+                  if (errorText != null)
+                    Padding(
+                      padding: EdgeInsetsDirectional.fromSTEB(
+                          4.0, 0.0, 4.0, 0.0),
+                      child: Text(
+                        errorText!,
+                        style: TextStyle(
+                          color: FlutterFlowTheme.of(context).error,
+                          fontSize: 12.0,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(
+                        color: FlutterFlowTheme.of(context).secondaryText),
+                  ),
                 ),
-          ),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLength: 40,
-            style: TextStyle(color: FlutterFlowTheme.of(context).primaryText),
-            decoration: InputDecoration(
-              hintText: 'Ej. Meditación',
-              hintStyle:
-                  TextStyle(color: FlutterFlowTheme.of(context).secondaryText),
-            ),
-            onSubmitted: (value) =>
-                Navigator.of(dialogContext).pop(value.trim()),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(
-                'Cancelar',
-                style: TextStyle(
-                    color: FlutterFlowTheme.of(context).secondaryText),
-              ),
-            ),
-            TextButton(
-              onPressed: () =>
-                  Navigator.of(dialogContext).pop(controller.text.trim()),
-              child: Text(
-                'Agregar',
-                style: TextStyle(color: FlutterFlowTheme.of(context).primary),
-              ),
-            ),
-          ],
+                TextButton(
+                  onPressed: trySubmit,
+                  child: Text(
+                    'Agregar',
+                    style:
+                        TextStyle(color: FlutterFlowTheme.of(context).primary),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -228,27 +267,33 @@ class _BehavioralRecordWidgetState extends State<BehavioralRecordWidget> {
                                     context.safePop();
                                   },
                                 ),
-                                Text(
-                                  'Registro de Conductas',
-                                  style: FlutterFlowTheme.of(context)
-                                      .titleLarge
-                                      .override(
-                                        font: GoogleFonts.outfit(
+                                Expanded(
+                                  child: Text(
+                                    'Registro de Conductas',
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: FlutterFlowTheme.of(context)
+                                        .titleLarge
+                                        .override(
+                                          font: GoogleFonts.outfit(
+                                            fontWeight: FontWeight.bold,
+                                            fontStyle: FlutterFlowTheme.of(
+                                                    context)
+                                                .titleLarge
+                                                .fontStyle,
+                                          ),
+                                          color: FlutterFlowTheme.of(context)
+                                              .primaryText,
+                                          letterSpacing: 0.0,
                                           fontWeight: FontWeight.bold,
-                                          fontStyle: FlutterFlowTheme.of(
-                                                  context)
-                                              .titleLarge
-                                              .fontStyle,
+                                          fontStyle:
+                                              FlutterFlowTheme.of(context)
+                                                  .titleLarge
+                                                  .fontStyle,
+                                          lineHeight: 1.4,
                                         ),
-                                        color: FlutterFlowTheme.of(context)
-                                            .primaryText,
-                                        letterSpacing: 0.0,
-                                        fontWeight: FontWeight.bold,
-                                        fontStyle: FlutterFlowTheme.of(context)
-                                            .titleLarge
-                                            .fontStyle,
-                                        lineHeight: 1.4,
-                                      ),
+                                  ),
                                 ),
                                 Container(
                                   width: 40.0,
@@ -260,7 +305,10 @@ class _BehavioralRecordWidgetState extends State<BehavioralRecordWidget> {
                         Padding(
                           padding: EdgeInsetsDirectional.fromSTEB(
                               24.0, 0.0, 24.0, 24.0),
-                          child: Column(
+                          child: Form(
+                            key: _model.formKey,
+                            autovalidateMode: AutovalidateMode.disabled,
+                            child: Column(
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.start,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -424,6 +472,9 @@ class _BehavioralRecordWidgetState extends State<BehavioralRecordWidget> {
                                           onSubmit: '',
                                           variant: 'outlined',
                                           error: false,
+                                          keyboardType: const TextInputType
+                                              .numberWithOptions(
+                                                  decimal: true),
                                         ),
                                       ),
                                     ].divide(SizedBox(height: 8.0)),
@@ -454,6 +505,8 @@ class _BehavioralRecordWidgetState extends State<BehavioralRecordWidget> {
                                         onSubmit: '',
                                         variant: 'outlined',
                                         error: false,
+                                        minLines: 3,
+                                        maxLines: 6,
                                       ),
                                     ),
                                   ].divide(SizedBox(height: 8.0)),
@@ -467,6 +520,11 @@ class _BehavioralRecordWidgetState extends State<BehavioralRecordWidget> {
                                 highlightColor: Colors.transparent,
                                 onTap: () async {
                                   if (_model.isSaving) return;
+                                  if (_model.formKey.currentState != null &&
+                                      !_model.formKey.currentState!
+                                          .validate()) {
+                                    return;
+                                  }
                                   if (_model.selectedBehaviorType == null ||
                                       _model.selectedBehaviorType!.isEmpty) {
                                     ScaffoldMessenger.of(context)
@@ -605,6 +663,7 @@ class _BehavioralRecordWidgetState extends State<BehavioralRecordWidget> {
                               ),
                               Container(height: 32.0),
                             ],
+                          ),
                           ),
                         ),
                       ],

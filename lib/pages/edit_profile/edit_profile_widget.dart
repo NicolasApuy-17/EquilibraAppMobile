@@ -6,6 +6,8 @@ import '/flutter_flow/custom_functions.dart' as functions;
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
+import '/utils/error_messages.dart';
+import '/utils/validators.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +29,7 @@ class EditProfileWidget extends StatefulWidget {
 }
 
 class _EditProfileWidgetState extends State<EditProfileWidget> {
+  final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
 
@@ -91,11 +94,19 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
       setState(() {
         _uploadedPhotoUrl = downloadUrl;
       });
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _pickedPhotoFile = null;
+        _errorText = e.code == 'unauthorized'
+            ? 'No tienes permiso para subir esta imagen.'
+            : genericSaveErrorMessage('subir la imagen');
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _pickedPhotoFile = null;
-        _errorText = 'No se pudo subir la imagen. Intenta nuevamente.';
+        _errorText = genericSaveErrorMessage('subir la imagen');
       });
     } finally {
       if (mounted) setState(() => _isUploadingPhoto = false);
@@ -103,11 +114,7 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
   }
 
   Future<void> _submit() async {
-    final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      setState(() => _errorText = 'El nombre no puede estar vacío.');
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
     if (_isUploadingPhoto) {
       setState(() => _errorText = 'Espera a que termine de subirse la foto.');
       return;
@@ -118,7 +125,7 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
     });
     try {
       await updateUserProfile(
-        displayName: name,
+        displayName: normalizeWhitespace(_nameController.text),
         phoneNumber: _phoneController.text.trim(),
         photoUrl: _uploadedPhotoUrl,
       );
@@ -128,10 +135,18 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
         );
         context.safePop();
       }
+    } on FirebaseException catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorText = e.code == 'permission-denied'
+              ? 'No tienes permiso para actualizar este perfil.'
+              : genericSaveErrorMessage('guardar tu perfil');
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorText = 'No se pudo guardar tu perfil. Intenta nuevamente.';
+          _errorText = genericSaveErrorMessage('guardar tu perfil');
         });
       }
     } finally {
@@ -169,15 +184,22 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
                       ),
                       onPressed: () => context.safePop(),
                     ),
-                    Text(
-                      'Editar Perfil',
-                      style: FlutterFlowTheme.of(context).titleLarge.override(
-                            font: GoogleFonts.outfit(
-                                fontWeight: FontWeight.bold),
-                            color: FlutterFlowTheme.of(context).primaryText,
-                            letterSpacing: 0.0,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    Expanded(
+                      child: Text(
+                        'Editar Perfil',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            FlutterFlowTheme.of(context).titleLarge.override(
+                                  font: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.bold),
+                                  color: FlutterFlowTheme.of(context)
+                                      .primaryText,
+                                  letterSpacing: 0.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
                     ),
                     SizedBox(width: 40.0),
                   ],
@@ -186,7 +208,10 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
               Expanded(
                 child: SingleChildScrollView(
                   padding: EdgeInsetsDirectional.fromSTEB(24.0, 0.0, 24.0, 24.0),
-                  child: Column(
+                  child: Form(
+                    key: _formKey,
+                    autovalidateMode: AutovalidateMode.disabled,
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Center(
@@ -223,6 +248,7 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
                         controller: _nameController,
                         hintText: 'Tu nombre',
                         icon: Icons.person_outline_rounded,
+                        validator: validateFullName,
                       ),
                       SizedBox(height: 16.0),
                       _FieldLabel('Teléfono'),
@@ -231,6 +257,8 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
                         hintText: 'Ej. +51 987 654 321',
                         icon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
+                        validator: (value) =>
+                            validatePhone(value, required: false),
                       ),
                       if (_errorText != null)
                         Padding(
@@ -284,6 +312,7 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
                       ),
                     ],
                   ),
+                  ),
                 ),
               ),
             ],
@@ -322,6 +351,7 @@ class _AppTextField extends StatelessWidget {
     required this.icon,
     this.keyboardType,
     this.onChanged,
+    this.validator,
   });
 
   final TextEditingController controller;
@@ -329,13 +359,15 @@ class _AppTextField extends StatelessWidget {
   final IconData icon;
   final TextInputType? keyboardType;
   final ValueChanged<String>? onChanged;
+  final FormFieldValidator<String>? validator;
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       onChanged: onChanged,
+      validator: validator,
       style: FlutterFlowTheme.of(context).bodyMedium.override(
             font: GoogleFonts.outfit(),
             color: FlutterFlowTheme.of(context).primaryText,

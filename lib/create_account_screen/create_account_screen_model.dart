@@ -3,6 +3,7 @@ import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
+import '/utils/validators.dart' as validators;
 import 'dart:ui';
 import '/index.dart';
 import 'create_account_screen_widget.dart' show CreateAccountScreenWidget;
@@ -22,15 +23,7 @@ class CreateAccountScreenModel
       nombreCompletoTextControllerValidator;
   String? _nombreCompletoTextControllerValidator(
       BuildContext context, String? val) {
-    if (val == null || val.isEmpty) {
-      return 'Ingresa tu nombre completo.';
-    }
-
-    if (val.length < 3) {
-      return 'Requires at least 3 characters.';
-    }
-
-    return null;
+    return validators.validateFullName(val);
   }
 
   // State field(s) for CorreoElectronico widget.
@@ -40,14 +33,7 @@ class CreateAccountScreenModel
       correoElectronicoTextControllerValidator;
   String? _correoElectronicoTextControllerValidator(
       BuildContext context, String? val) {
-    if (val == null || val.isEmpty) {
-      return 'Ingresa tu correo electrónico.';
-    }
-
-    if (!RegExp(kTextValidatorEmailRegex).hasMatch(val)) {
-      return 'Has to be a valid email address.';
-    }
-    return null;
+    return validators.validateEmail(val);
   }
 
   // State field(s) for Contrasena widget.
@@ -57,15 +43,7 @@ class CreateAccountScreenModel
   String? Function(BuildContext, String?)? contrasenaTextControllerValidator;
   String? _contrasenaTextControllerValidator(
       BuildContext context, String? val) {
-    if (val == null || val.isEmpty) {
-      return 'Ingresa una contraseña.';
-    }
-
-    if (val.length < 8) {
-      return 'La contraseña debe tener al menos 8 caracteres.';
-    }
-
-    return null;
+    return validators.validatePassword(val);
   }
 
   // State field(s) for ConfirmarContrasena widget.
@@ -76,15 +54,10 @@ class CreateAccountScreenModel
       confirmarContrasenaTextControllerValidator;
   String? _confirmarContrasenaTextControllerValidator(
       BuildContext context, String? val) {
-    if (val == null || val.isEmpty) {
-      return 'Confirma tu contraseña.';
-    }
-
-    if (val.length < 8) {
-      return 'La confirmación debe tener al menos 8 caracteres.';
-    }
-
-    return null;
+    return validators.validatePasswordConfirmation(
+      val,
+      contrasenaTextController?.text ?? '',
+    );
   }
 
   @override

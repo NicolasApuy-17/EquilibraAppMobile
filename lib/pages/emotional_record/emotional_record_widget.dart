@@ -9,6 +9,7 @@ import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
+import '/utils/validators.dart';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -50,51 +51,89 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
     required String hint,
   }) async {
     final controller = TextEditingController();
+    String? errorText;
     return showDialog<String>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: FlutterFlowTheme.of(context).secondaryBackground,
-          title: Text(
-            title,
-            style: FlutterFlowTheme.of(context).titleMedium.override(
-                  font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
-                  color: FlutterFlowTheme.of(context).primaryText,
-                  letterSpacing: 0.0,
-                  fontWeight: FontWeight.bold,
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            void trySubmit() {
+              final error = validateLabel(controller.text);
+              if (error != null) {
+                setDialogState(() => errorText = error);
+                return;
+              }
+              Navigator.of(dialogContext).pop(controller.text.trim());
+            }
+
+            return AlertDialog(
+              backgroundColor:
+                  FlutterFlowTheme.of(context).secondaryBackground,
+              title: Text(
+                title,
+                style: FlutterFlowTheme.of(context).titleMedium.override(
+                      font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                      color: FlutterFlowTheme.of(context).primaryText,
+                      letterSpacing: 0.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    maxLength: 30,
+                    style: TextStyle(
+                        color: FlutterFlowTheme.of(context).primaryText),
+                    decoration: InputDecoration(
+                      hintText: hint,
+                      hintStyle: TextStyle(
+                          color: FlutterFlowTheme.of(context).secondaryText),
+                    ),
+                    onChanged: (_) {
+                      if (errorText != null) {
+                        setDialogState(() => errorText = null);
+                      }
+                    },
+                    onSubmitted: (_) => trySubmit(),
+                  ),
+                  if (errorText != null)
+                    Padding(
+                      padding: EdgeInsetsDirectional.fromSTEB(
+                          4.0, 0.0, 4.0, 0.0),
+                      child: Text(
+                        errorText!,
+                        style: TextStyle(
+                          color: FlutterFlowTheme.of(context).error,
+                          fontSize: 12.0,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    'Cancelar',
+                    style: TextStyle(
+                        color: FlutterFlowTheme.of(context).secondaryText),
+                  ),
                 ),
-          ),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLength: 40,
-            style: TextStyle(color: FlutterFlowTheme.of(context).primaryText),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle:
-                  TextStyle(color: FlutterFlowTheme.of(context).secondaryText),
-            ),
-            onSubmitted: (value) =>
-                Navigator.of(dialogContext).pop(value.trim()),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(
-                'Cancelar',
-                style: TextStyle(
-                    color: FlutterFlowTheme.of(context).secondaryText),
-              ),
-            ),
-            TextButton(
-              onPressed: () =>
-                  Navigator.of(dialogContext).pop(controller.text.trim()),
-              child: Text(
-                'Agregar',
-                style: TextStyle(color: FlutterFlowTheme.of(context).primary),
-              ),
-            ),
-          ],
+                TextButton(
+                  onPressed: trySubmit,
+                  child: Text(
+                    'Agregar',
+                    style:
+                        TextStyle(color: FlutterFlowTheme.of(context).primary),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -180,28 +219,33 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                       context.safePop();
                                     },
                                   ),
-                                  Text(
-                                    'Registro Emocional',
-                                    style: FlutterFlowTheme.of(context)
-                                        .titleLarge
-                                        .override(
-                                          font: GoogleFonts.outfit(
+                                  Expanded(
+                                    child: Text(
+                                      'Registro Emocional',
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: FlutterFlowTheme.of(context)
+                                          .titleLarge
+                                          .override(
+                                            font: GoogleFonts.outfit(
+                                              fontWeight: FontWeight.bold,
+                                              fontStyle:
+                                                  FlutterFlowTheme.of(context)
+                                                      .titleLarge
+                                                      .fontStyle,
+                                            ),
+                                            color: FlutterFlowTheme.of(context)
+                                                .primaryText,
+                                            letterSpacing: 0.0,
                                             fontWeight: FontWeight.bold,
                                             fontStyle:
                                                 FlutterFlowTheme.of(context)
                                                     .titleLarge
                                                     .fontStyle,
+                                            lineHeight: 1.4,
                                           ),
-                                          color: FlutterFlowTheme.of(context)
-                                              .primaryText,
-                                          letterSpacing: 0.0,
-                                          fontWeight: FontWeight.bold,
-                                          fontStyle:
-                                              FlutterFlowTheme.of(context)
-                                                  .titleLarge
-                                                  .fontStyle,
-                                          lineHeight: 1.4,
-                                        ),
+                                    ),
                                   ),
                                   Container(
                                     width: 40.0,
@@ -214,7 +258,10 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                         Padding(
                           padding: EdgeInsetsDirectional.fromSTEB(
                               24.0, 0.0, 24.0, 24.0),
-                          child: Column(
+                          child: Form(
+                            key: _model.formKey,
+                            autovalidateMode: AutovalidateMode.disabled,
+                            child: Column(
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.start,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -265,7 +312,6 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                     clipBehavior: Clip.none,
                                     children: [
                                       Container(
-                                        width: 88.0,
                                         height: 40.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
@@ -292,7 +338,6 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         ),
                                       ),
                                       Container(
-                                        width: 88.0,
                                         height: 40.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
@@ -319,7 +364,6 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         ),
                                       ),
                                       Container(
-                                        width: 88.0,
                                         height: 40.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
@@ -346,7 +390,6 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         ),
                                       ),
                                       Container(
-                                        width: 88.0,
                                         height: 40.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
@@ -678,6 +721,9 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                       onSubmit: '',
                                       variant: 'outlined',
                                       error: false,
+                                      maxLength: 500,
+                                      minLines: 3,
+                                      maxLines: 6,
                                     ),
                                   ),
                                 ].divide(SizedBox(height: 16.0)),
@@ -692,6 +738,11 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                 highlightColor: Colors.transparent,
                                 onTap: () async {
                                   if (_model.isSaving) return;
+                                  if (_model.formKey.currentState != null &&
+                                      !_model.formKey.currentState!
+                                          .validate()) {
+                                    return;
+                                  }
                                   if (_model.selectedEmotion == null ||
                                       _model.selectedEmotion!.isEmpty) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -788,6 +839,7 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                 height: 32.0,
                               ),
                             ].divide(SizedBox(height: 32.0)),
+                          ),
                           ),
                         ),
                       ],

@@ -6,6 +6,8 @@ import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/index.dart';
 import '/utils/date_format_es.dart';
+import '/utils/error_messages.dart';
+import '/utils/validators.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'tasks_model.dart';
@@ -96,14 +98,28 @@ class _TasksWidgetState extends State<TasksWidget> {
         ) ??
         false;
     if (confirmed) {
-      await task.reference.delete();
+      try {
+        await task.reference.delete();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(genericSaveErrorMessage('eliminar la tarea'))),
+        );
+      }
     }
   }
 
   Future<void> _toggleComplete(TasksRecord task) async {
-    await task.reference.update(createTasksRecordData(
-      status: task.status == 'completada' ? 'pendiente' : 'completada',
-    ));
+    try {
+      await task.reference.update(createTasksRecordData(
+        status: task.status == 'completada' ? 'pendiente' : 'completada',
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(genericSaveErrorMessage('actualizar la tarea'))),
+      );
+    }
   }
 
   @override
@@ -145,16 +161,23 @@ class _TasksWidgetState extends State<TasksWidget> {
                         context.safePop();
                       },
                     ),
-                    Text(
-                      'Tareas e indicaciones',
-                      style: FlutterFlowTheme.of(context).titleLarge.override(
-                            font: GoogleFonts.outfit(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            color: FlutterFlowTheme.of(context).primaryText,
-                            letterSpacing: 0.0,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    Expanded(
+                      child: Text(
+                        'Tareas e indicaciones',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            FlutterFlowTheme.of(context).titleLarge.override(
+                                  font: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  color: FlutterFlowTheme.of(context)
+                                      .primaryText,
+                                  letterSpacing: 0.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
                     ),
                     FlutterFlowIconButton(
                       borderRadius: 8.0,
@@ -677,23 +700,57 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
   }
 
   Future<void> _pickDate() async {
+    final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: _dueDate ?? DateTime.now(),
-      firstDate: DateTime(DateTime.now().year - 1),
-      lastDate: DateTime(DateTime.now().year + 5),
+      initialDate: _dueDate ?? now,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(now.year + 5),
     );
     if (picked != null) {
       setState(() => _dueDate = picked);
     }
   }
 
+  /// A due date in the past doesn't make sense for a pending task; mirrors
+  /// the "no puede ser anterior a hoy" rule used for goal target dates.
+  String? _validateDueDate(DateTime? value) {
+    if (value == null) return null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final due = DateTime(value.year, value.month, value.day);
+    if (due.isBefore(today)) {
+      return 'La fecha de vencimiento no puede ser anterior a hoy.';
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
-    final title = _titleController.text.trim();
-    if (title.isEmpty) {
-      setState(() => _errorText = 'El título es obligatorio.');
+    final titleError = validateFreeText(
+      _titleController.text,
+      maxLength: 80,
+      required: true,
+      requiredMessage: 'El título es obligatorio.',
+    );
+    if (titleError != null) {
+      setState(() => _errorText = titleError);
       return;
     }
+    final descriptionError = validateFreeText(
+      _descriptionController.text,
+      maxLength: 500,
+      required: false,
+    );
+    if (descriptionError != null) {
+      setState(() => _errorText = descriptionError);
+      return;
+    }
+    final dueDateError = _validateDueDate(_dueDate);
+    if (dueDateError != null) {
+      setState(() => _errorText = dueDateError);
+      return;
+    }
+    final title = normalizeWhitespace(_titleController.text);
     setState(() {
       _isSaving = true;
       _errorText = null;
@@ -721,7 +778,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorText = 'No se pudo guardar la tarea. Intenta nuevamente.';
+          _errorText = genericSaveErrorMessage('guardar la tarea');
         });
       }
     } finally {

@@ -162,20 +162,25 @@ class _RegisterHubWidgetState extends State<RegisterHubWidget> {
                               context.safePop();
                             },
                           ),
-                          Text(
-                            'Registrar',
-                            style: FlutterFlowTheme.of(context)
-                                .titleLarge
-                                .override(
-                                  font: GoogleFonts.outfit(
+                          Expanded(
+                            child: Text(
+                              'Registrar',
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: FlutterFlowTheme.of(context)
+                                  .titleLarge
+                                  .override(
+                                    font: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    color: FlutterFlowTheme.of(context)
+                                        .primaryText,
+                                    letterSpacing: 0.0,
                                     fontWeight: FontWeight.bold,
+                                    lineHeight: 1.4,
                                   ),
-                                  color:
-                                      FlutterFlowTheme.of(context).primaryText,
-                                  letterSpacing: 0.0,
-                                  fontWeight: FontWeight.bold,
-                                  lineHeight: 1.4,
-                                ),
+                            ),
                           ),
                           Container(width: 40.0),
                         ],

@@ -9,6 +9,7 @@ import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
+import '/utils/validators.dart';
 import 'dart:ui';
 import '/index.dart';
 import 'emotional_record_widget.dart' show EmotionalRecordWidget;
@@ -19,6 +20,8 @@ import 'package:provider/provider.dart';
 
 class EmotionalRecordModel extends FlutterFlowModel<EmotionalRecordWidget> {
   ///  Local state fields for this page.
+
+  final formKey = GlobalKey<FormState>();
 
   static const List<String> predeterminedEmotions = [
     'Alegría',
@@ -107,6 +110,8 @@ class EmotionalRecordModel extends FlutterFlowModel<EmotionalRecordWidget> {
         createModel(context, () => EmotionPillCleanModel());
     sliderModel = createModel(context, () => SliderModel());
     textFieldModel = createModel(context, () => TextFieldModel());
+    textFieldModel.inputTextControllerValidator = (context, val) =>
+        validateDescription(val, maxLength: 500, required: false);
     buttonModel = createModel(context, () => ButtonModel());
     bottomNavModel = createModel(context, () => BottomNavModel());
   }

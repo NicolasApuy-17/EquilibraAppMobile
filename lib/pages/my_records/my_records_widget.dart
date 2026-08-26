@@ -85,16 +85,23 @@ class _MyRecordsWidgetState extends State<MyRecordsWidget> {
                         context.safePop();
                       },
                     ),
-                    Text(
-                      'Mis registros',
-                      style: FlutterFlowTheme.of(context).titleLarge.override(
-                            font: GoogleFonts.outfit(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            color: FlutterFlowTheme.of(context).primaryText,
-                            letterSpacing: 0.0,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    Expanded(
+                      child: Text(
+                        'Mis registros',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            FlutterFlowTheme.of(context).titleLarge.override(
+                                  font: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  color: FlutterFlowTheme.of(context)
+                                      .primaryText,
+                                  letterSpacing: 0.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
                     ),
                     FlutterFlowIconButton(
                       borderRadius: 8.0,

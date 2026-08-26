@@ -36,6 +36,8 @@ class ExerciseHeader extends StatelessWidget {
             child: Text(
               title,
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: FlutterFlowTheme.of(context).titleLarge.override(
                     font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
                     color: FlutterFlowTheme.of(context).primaryText,

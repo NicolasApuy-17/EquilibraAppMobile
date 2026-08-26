@@ -2,6 +2,7 @@ import '/auth/firebase_auth/auth_util.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
+import '/utils/validators.dart' as validators;
 import 'dart:ui';
 import '/index.dart';
 import 'login_screen_widget.dart' show LoginScreenWidget;
@@ -20,14 +21,7 @@ class LoginScreenModel extends FlutterFlowModel<LoginScreenWidget> {
       correoElectronicoTextControllerValidator;
   String? _correoElectronicoTextControllerValidator(
       BuildContext context, String? val) {
-    if (val == null || val.isEmpty) {
-      return 'Ingresa tu correo electrónico.';
-    }
-
-    if (!RegExp(kTextValidatorEmailRegex).hasMatch(val)) {
-      return 'Has to be a valid email address.';
-    }
-    return null;
+    return validators.validateEmail(val);
   }
 
   // State field(s) for Contrasena widget.
@@ -37,15 +31,7 @@ class LoginScreenModel extends FlutterFlowModel<LoginScreenWidget> {
   String? Function(BuildContext, String?)? contrasenaTextControllerValidator;
   String? _contrasenaTextControllerValidator(
       BuildContext context, String? val) {
-    if (val == null || val.isEmpty) {
-      return 'Ingresa una contraseña.';
-    }
-
-    if (val.length < 8) {
-      return 'La contraseña debe tener al menos 8 caracteres.';
-    }
-
-    return null;
+    return validators.validatePassword(val);
   }
 
   @override
