@@ -7,5 +7,11 @@ exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
   await firestore.collection("users").doc(user.uid).delete();
 });
 
-const { chatWithGemini } = require("./chatbot");
-exports.chatWithGemini = chatWithGemini;
+const {
+  createPsychologist,
+  assignPsychologist,
+  sendConversationMessage,
+} = require("./psychologists");
+exports.createPsychologist = createPsychologist;
+exports.assignPsychologist = assignPsychologist;
+exports.sendConversationMessage = sendConversationMessage;

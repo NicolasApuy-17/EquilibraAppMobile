@@ -46,10 +46,23 @@ class UsersRecord extends FirestoreRecord {
   String get phoneNumber => _phoneNumber ?? '';
   bool hasPhoneNumber() => _phoneNumber != null;
 
-  // "role" field.
+  // "role" field. One of 'paciente' (default), 'psicologo' or 'admin'.
   String? _role;
   String get role => _role ?? '';
   bool hasRole() => _role != null;
+
+  // "specialty" field. Only meaningful for role == 'psicologo': a short
+  // description shown to patients choosing a psychologist.
+  String? _specialty;
+  String get specialty => _specialty ?? '';
+  bool hasSpecialty() => _specialty != null;
+
+  // "psychologistRef" field. Only meaningful for role == 'paciente': the
+  // psychologist this patient currently has assigned, if any. Only ever
+  // written server-side (see the `assignPsychologist` Cloud Function).
+  DocumentReference? _psychologistRef;
+  DocumentReference? get psychologistRef => _psychologistRef;
+  bool hasPsychologistRef() => _psychologistRef != null;
 
   void _initializeFields() {
     _email = snapshotData['email'] as String?;
@@ -59,6 +72,9 @@ class UsersRecord extends FirestoreRecord {
     _createdTime = snapshotData['created_time'] as DateTime?;
     _phoneNumber = snapshotData['phone_number'] as String?;
     _role = snapshotData['role'] as String?;
+    _specialty = snapshotData['specialty'] as String?;
+    _psychologistRef =
+        snapshotData['psychologistRef'] as DocumentReference?;
   }
 
   static CollectionReference get collection =>
@@ -102,6 +118,8 @@ Map<String, dynamic> createUsersRecordData({
   DateTime? createdTime,
   String? phoneNumber,
   String? role,
+  String? specialty,
+  DocumentReference? psychologistRef,
 }) {
   final firestoreData = mapToFirestore(
     <String, dynamic>{
@@ -112,6 +130,8 @@ Map<String, dynamic> createUsersRecordData({
       'created_time': createdTime,
       'phone_number': phoneNumber,
       'role': role,
+      'specialty': specialty,
+      'psychologistRef': psychologistRef,
     }.withoutNulls,
   );
 
@@ -129,7 +149,9 @@ class UsersRecordDocumentEquality implements Equality<UsersRecord> {
         e1?.uid == e2?.uid &&
         e1?.createdTime == e2?.createdTime &&
         e1?.phoneNumber == e2?.phoneNumber &&
-        e1?.role == e2?.role;
+        e1?.role == e2?.role &&
+        e1?.specialty == e2?.specialty &&
+        e1?.psychologistRef == e2?.psychologistRef;
   }
 
   @override
@@ -140,7 +162,9 @@ class UsersRecordDocumentEquality implements Equality<UsersRecord> {
         e?.uid,
         e?.createdTime,
         e?.phoneNumber,
-        e?.role
+        e?.role,
+        e?.specialty,
+        e?.psychologistRef,
       ]);
 
   @override

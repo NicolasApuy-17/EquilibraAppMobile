@@ -4,7 +4,6 @@ export '/pages/emotional_record/emotional_record_widget.dart'
 export '/pages/behavioral_record/behavioral_record_widget.dart'
     show BehavioralRecordWidget;
 export '/pages/register_hub/register_hub_widget.dart' show RegisterHubWidget;
-export '/pages/chatbot/chatbot_widget.dart' show ChatbotWidget;
 export '/pages/edit_profile/edit_profile_widget.dart' show EditProfileWidget;
 export '/pages/help_center/help_center_widget.dart' show HelpCenterWidget;
 export '/pages/support_contact/support_contact_widget.dart'
@@ -38,3 +37,13 @@ export '/create_account_screen/create_account_screen_widget.dart'
     show CreateAccountScreenWidget;
 export '/test_screen/test_screen_widget.dart' show TestScreenWidget;
 export '/login_screen/login_screen_widget.dart' show LoginScreenWidget;
+export '/pages/admin_psychologists/admin_psychologists_widget.dart'
+    show AdminPsychologistsWidget;
+export '/pages/psychologist_home/psychologist_home_widget.dart'
+    show PsychologistHomeWidget;
+export '/pages/psychologist_patient_detail/psychologist_patient_detail_widget.dart'
+    show PsychologistPatientDetailWidget;
+export '/pages/choose_psychologist/choose_psychologist_widget.dart'
+    show ChoosePsychologistWidget;
+export '/pages/psychologist_chat/psychologist_chat_widget.dart'
+    show PsychologistChatWidget;

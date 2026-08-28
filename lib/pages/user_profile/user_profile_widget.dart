@@ -689,6 +689,25 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                       ),
                                     ),
                                   ),
+                                  if (currentUserDocument?.role == 'admin')
+                                    InkWell(
+                                      splashColor: Colors.transparent,
+                                      focusColor: Colors.transparent,
+                                      hoverColor: Colors.transparent,
+                                      highlightColor: Colors.transparent,
+                                      onTap: () => context.pushNamed(
+                                          AdminPsychologistsWidget.routeName),
+                                      child: ProfileMenuItemWidget(
+                                        icon: Icon(
+                                          Icons.admin_panel_settings_rounded,
+                                          color: FlutterFlowTheme.of(context)
+                                              .primary,
+                                          size: 22.0,
+                                        ),
+                                        title: 'Panel de administración',
+                                        subtitle: 'Gestiona psicólogos',
+                                      ),
+                                    ),
                                   Container(
                                     height: 24.0,
                                   ),

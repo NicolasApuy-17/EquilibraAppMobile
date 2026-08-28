@@ -1,4 +1,5 @@
 import '/auth/firebase_auth/auth_util.dart';
+import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
@@ -412,8 +413,28 @@ class _LoginScreenWidgetState extends State<LoginScreenWidget> {
                                 return;
                               }
 
+                              // Resolve the role right away (rather than
+                              // relying on the async `authenticatedUserStream`)
+                              // so a psychologist lands on their own home
+                              // screen immediately, with no flash of the
+                              // patient home screen first.
+                              String? role;
+                              try {
+                                final userDoc =
+                                    await UsersRecord.getDocumentOnce(
+                                        UsersRecord.collection.doc(user.uid));
+                                role = userDoc.role;
+                              } catch (_) {
+                                role = null;
+                              }
+                              if (!context.mounted) return;
+
                               context.goNamedAuth(
-                                  HomeScreenWidget.routeName, context.mounted);
+                                role == 'psicologo'
+                                    ? PsychologistHomeWidget.routeName
+                                    : HomeScreenWidget.routeName,
+                                context.mounted,
+                              );
                             },
                             text: 'Iniciar sesión',
                             options: FFButtonOptions(

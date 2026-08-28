@@ -1,17 +1,51 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function userRef(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    // Only true when the caller's own `users` doc has role == 'admin'. Costs
+    // an extra read, only used on the admin-only paths below.
+    function isAdmin() {
+      return request.auth != null &&
+        get(userRef(request.auth.uid)).data.role == 'admin';
+    }
+
+    // True when the caller is the psychologist assigned to `patientUid`
+    // (i.e. that patient's own `psychologistRef` points back at the caller).
+    function isAssignedPsychologist(patientUid) {
+      return request.auth != null &&
+        get(userRef(patientUid)).data.psychologistRef == userRef(request.auth.uid);
+    }
+
     match /records/{document} {
       allow create: if request.auth != null &&
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
-      allow read, update, delete: if request.auth != null &&
+      allow read: if request.auth != null &&
+        (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+         isAssignedPsychologist(resource.data.userRef.id));
+      allow update: if request.auth != null &&
+        (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+         (isAssignedPsychologist(resource.data.userRef.id) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['psychologistComment', 'psychologistCommentTime'])));
+      allow delete: if request.auth != null &&
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
     match /behavioral_records/{document} {
       allow create: if request.auth != null &&
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
-      allow read, update, delete: if request.auth != null &&
+      allow read: if request.auth != null &&
+        (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+         isAssignedPsychologist(resource.data.userRef.id));
+      allow update: if request.auth != null &&
+        (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+         (isAssignedPsychologist(resource.data.userRef.id) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['psychologistComment', 'psychologistCommentTime'])));
+      allow delete: if request.auth != null &&
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
@@ -25,22 +59,56 @@ service cloud.firestore {
     match /tasks/{document} {
       allow create: if request.auth != null &&
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
-      allow read, update, delete: if request.auth != null &&
+      allow read: if request.auth != null &&
+        (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+         isAssignedPsychologist(resource.data.userRef.id));
+      allow update, delete: if request.auth != null &&
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
     match /goals/{document} {
       allow create: if request.auth != null &&
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
-      allow read, update, delete: if request.auth != null &&
+      allow read: if request.auth != null &&
+        (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+         isAssignedPsychologist(resource.data.userRef.id));
+      allow update, delete: if request.auth != null &&
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
+    // Patient- and psychologist-owned fields on `users` are still only ever
+    // written by their owner directly (create/update/delete unchanged) or by
+    // Cloud Functions using the Admin SDK, which bypasses these rules
+    // entirely (see `createPsychologist` / `assignPsychologist`). Only
+    // `read` gains extra cases: an admin can read any profile, any signed-in
+    // user can read a *psychologist's* profile (so patients can browse the
+    // directory to choose one), and an assigned psychologist can read their
+    // own patients' profiles.
     match /users/{document} {
       allow create: if request.auth.uid == document;
-      allow read: if request.auth.uid == document;
+      allow read: if request.auth.uid == document ||
+        isAdmin() ||
+        resource.data.role == 'psicologo' ||
+        isAssignedPsychologist(document);
       allow write: if request.auth.uid == document;
       allow delete: if request.auth.uid == document;
+    }
+
+    // Conversations and their messages are only ever written by the
+    // `assignPsychologist` / `sendConversationMessage` Cloud Functions
+    // (Admin SDK, bypasses rules) — clients only ever read here, live, via
+    // `.snapshots()`. No create/update/delete rule means direct client
+    // writes are denied by default.
+    match /conversations/{conversationId} {
+      allow read: if request.auth != null &&
+        (resource.data.patientRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+         resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid));
+
+      match /messages/{messageId} {
+        allow read: if request.auth != null &&
+          (get(/databases/$(database)/documents/conversations/$(conversationId)).data.patientRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+           get(/databases/$(database)/documents/conversations/$(conversationId)).data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid));
+      }
     }
   }
 }

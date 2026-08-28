@@ -1,0 +1,38 @@
+# Normalize line endings for everything Git considers text, and let each
+# checkout convert to the platform's native line ending (LF on Linux/macOS,
+# CRLF on Windows) — this is what silences the "LF will be replaced by CRLF"
+# warning, since the repo itself always stores LF regardless of OS.
+* text=auto eol=lf
+
+# Source and config files: always LF in the repo, explicitly.
+*.dart text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.rules text eol=lf
+*.gitattributes text eol=lf
+*.gitignore text eol=lf
+*.sh text eol=lf
+
+# Windows-only scripts should keep CRLF.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets: never touch line endings, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.mp3 binary
+*.wav binary
+*.mp4 binary
+*.mov binary
+*.pdf binary
+*.jks binary
+*.keystore binary

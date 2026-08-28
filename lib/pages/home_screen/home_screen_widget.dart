@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import '/auth/firebase_auth/auth_util.dart';
+import '/backend/backend.dart';
 import '/components/feature_card/feature_card_widget.dart';
 import '/components/quick_action/quick_action_widget.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
@@ -28,14 +31,28 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // Safety net for a psychologist reopening the app while already signed
+  // in: the root '/' route can't wait for the async role lookup before
+  // deciding between HomeScreenWidget and PsychologistHomeWidget (see
+  // nav.dart), so it always lands here first. The normal, flash-free path
+  // is login_screen_widget.dart resolving the role right after sign-in.
+  StreamSubscription<UsersRecord?>? _roleRedirectSub;
+
   @override
   void initState() {
     super.initState();
     _model = createModel(context, () => HomeScreenModel());
+    _roleRedirectSub = authenticatedUserStream.listen((doc) {
+      if (doc?.role != 'psicologo' || !mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.goNamed(PsychologistHomeWidget.routeName);
+      });
+    });
   }
 
   @override
   void dispose() {
+    _roleRedirectSub?.cancel();
     _model.dispose();
 
     super.dispose();
@@ -711,8 +728,29 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                           hoverColor: Colors.transparent,
                                           highlightColor: Colors.transparent,
                                           onTap: () async {
-                                            context
-                                                .pushNamed(ChatbotWidget.routeName);
+                                            // The chat button opens the
+                                            // patient's conversation with
+                                            // their assigned psychologist
+                                            // (the Gemini assistant this
+                                            // used to open was removed
+                                            // entirely). If no psychologist
+                                            // is assigned yet, send them to
+                                            // pick one first instead of
+                                            // failing silently.
+                                            final psychologistRef =
+                                                currentUserDocument
+                                                    ?.psychologistRef;
+                                            if (psychologistRef == null) {
+                                              context.pushNamed(
+                                                  ChoosePsychologistWidget
+                                                      .routeName);
+                                            } else {
+                                              context.pushNamed(
+                                                PsychologistChatWidget
+                                                    .routeName,
+                                                extra: currentUserUid,
+                                              );
+                                            }
                                           },
                                           child: wrapWithModel(
                                             model: _model.quickActionModel2,

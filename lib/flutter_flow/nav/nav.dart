@@ -111,12 +111,6 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           builder: (context, params) => RegisterHubWidget(),
         ),
         FFRoute(
-          name: ChatbotWidget.routeName,
-          path: ChatbotWidget.routePath,
-          requireAuth: true,
-          builder: (context, params) => ChatbotWidget(),
-        ),
-        FFRoute(
           name: HomeScreenWidget.routeName,
           path: HomeScreenWidget.routePath,
           requireAuth: true,
@@ -237,7 +231,41 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           name: LoginScreenWidget.routeName,
           path: LoginScreenWidget.routePath,
           builder: (context, params) => LoginScreenWidget(),
-        )
+        ),
+        FFRoute(
+          name: AdminPsychologistsWidget.routeName,
+          path: AdminPsychologistsWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => AdminPsychologistsWidget(),
+        ),
+        FFRoute(
+          name: PsychologistHomeWidget.routeName,
+          path: PsychologistHomeWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => PsychologistHomeWidget(),
+        ),
+        FFRoute(
+          name: PsychologistPatientDetailWidget.routeName,
+          path: PsychologistPatientDetailWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => PsychologistPatientDetailWidget(
+            patient: params.state.extra as UsersRecord,
+          ),
+        ),
+        FFRoute(
+          name: ChoosePsychologistWidget.routeName,
+          path: ChoosePsychologistWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => ChoosePsychologistWidget(),
+        ),
+        FFRoute(
+          name: PsychologistChatWidget.routeName,
+          path: PsychologistChatWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => PsychologistChatWidget(
+            conversationId: params.state.extra as String,
+          ),
+        ),
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
     );
 
