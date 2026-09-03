@@ -1,4 +1,5 @@
 import '/components/bottom_nav2/bottom_nav2_widget.dart';
+import 'recommended_activities_section.dart';
 import '/pages/regulation_exercises/exercise_controls.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
@@ -361,6 +362,7 @@ class _RegulationToolsWidgetState extends State<RegulationToolsWidget> {
                         Container(
                           height: 24.0,
                         ),
+                        const RecommendedActivitiesSection(),
                         Padding(
                           padding: EdgeInsetsDirectional.fromSTEB(
                               24.0, 0.0, 24.0, 0.0),

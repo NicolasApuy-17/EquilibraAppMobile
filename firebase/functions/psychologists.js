@@ -1,5 +1,6 @@
 const admin = require("firebase-admin");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentWritten } = require("firebase-functions/v2/firestore");
 
 // Same pattern the client uses in lib/utils/validators.dart — kept in sync
 // by hand since this is server-side JS, not shared code with the Dart app.
@@ -7,6 +8,58 @@ const NAME_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?: [A-Za-zÁÉÍÓÚ�
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const MAX_MESSAGE_LENGTH = 2000;
+
+// Strips accents/diacritics and anything that isn't A-Z from `name`, used
+// as the prefix of a psychologist's link code (e.g. "Fabrizzio Ruiz" ->
+// "FABRIZZIORUIZ" -> the function below then takes the first word only).
+function linkCodeSlug(displayName) {
+  const firstWord = displayName.trim().split(/\s+/)[0] ?? "";
+  return firstWord
+    .normalize("NFD")
+    .replace(/[^A-Za-z]/g, "")
+    .toUpperCase();
+}
+
+/** Generates a unique "NOMBRE-1234" link code, retrying on collision. */
+async function generateUniqueLinkCode(displayName) {
+  const slug = linkCodeSlug(displayName) || "PSICOLOGO";
+  const usersRef = admin.firestore().collection("users");
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    const candidate = `${slug}-${suffix}`;
+    const existing = await usersRef
+      .where("linkCode", "==", candidate)
+      .limit(1)
+      .get();
+    if (existing.empty) return candidate;
+  }
+  throw new HttpsError(
+    "internal",
+    "No se pudo generar un código de vinculación único. Intenta nuevamente."
+  );
+}
+
+/**
+ * Mirrors a server-side failure into the same `app_errors` collection the
+ * Flutter client logs to (see lib/utils/error_logging.dart), so the admin
+ * panel's "Incidencias" tab shows backend failures too, not just
+ * client-side ones. Best-effort: never lets a logging failure mask the
+ * original error.
+ */
+async function logServerError(context, error, userUid) {
+  try {
+    await admin.firestore().collection("app_errors").add({
+      context,
+      message: `${error?.message ?? error}`,
+      stackTrace: error?.stack ? `${error.stack}`.split("\n").slice(0, 20).join("\n") : null,
+      userRef: userUid ? admin.firestore().collection("users").doc(userUid) : null,
+      role: "system",
+      createdTime: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (loggingError) {
+    console.error("[logServerError] failed to log:", loggingError);
+  }
+}
 
 function assertAuthenticated(request) {
   if (!request.auth) {
@@ -76,11 +129,14 @@ exports.createPsychologist = onCall({ cors: true }, async (request) => {
       );
     }
     console.error("[createPsychologist] createUser failed:", error);
+    await logServerError("createPsychologist: createUser failed", error, request.auth.uid);
     throw new HttpsError(
       "internal",
       "No se pudo crear la cuenta del psicólogo. Intenta nuevamente."
     );
   }
+
+  const linkCode = await generateUniqueLinkCode(displayName);
 
   await admin.firestore().collection("users").doc(uid).set({
     email,
@@ -88,46 +144,235 @@ exports.createPsychologist = onCall({ cors: true }, async (request) => {
     uid,
     role: "psicologo",
     specialty,
+    linkCode,
     created_time: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  return { uid };
+  return { uid, linkCode };
 });
 
-exports.assignPsychologist = onCall({ cors: true }, async (request) => {
-  assertAuthenticated(request);
-
-  const psychologistId = `${request.data?.psychologistId ?? ""}`.trim();
-  if (!psychologistId) {
-    throw new HttpsError("invalid-argument", "Selecciona un psicólogo.");
-  }
-
+/**
+ * Shared by `linkPsychologistByCode` and `adminAssignPsychologist`: points
+ * `patientRef` at `psychologistRef` and creates/updates their shared
+ * conversation. Does not check whether the patient already has a
+ * psychologist assigned — callers decide whether that's allowed.
+ */
+async function linkPatientToPsychologist(patientRef, psychologistRef) {
   const firestore = admin.firestore();
-  const patientRef = firestore.collection("users").doc(request.auth.uid);
-  const psychologistRef = firestore.collection("users").doc(psychologistId);
   const conversationRef = firestore
     .collection("conversations")
-    .doc(request.auth.uid);
-
-  const psychologistSnap = await psychologistRef.get();
-  if (!psychologistSnap.exists || psychologistSnap.data().role !== "psicologo") {
-    throw new HttpsError("not-found", "Ese psicólogo ya no está disponible.");
-  }
+    .doc(patientRef.id);
+  const now = admin.firestore.FieldValue.serverTimestamp();
 
   await firestore.runTransaction(async (transaction) => {
-    transaction.update(patientRef, { psychologistRef });
+    transaction.update(patientRef, {
+      psychologistRef,
+      psychologistLinkedAt: now,
+    });
     transaction.set(
       conversationRef,
-      {
-        patientRef,
-        psychologistRef,
-        createdTime: admin.firestore.FieldValue.serverTimestamp(),
-      },
+      { patientRef, psychologistRef, createdTime: now },
       { merge: true }
     );
   });
 
-  return { conversationId: request.auth.uid };
+  return conversationRef.id;
+}
+
+exports.linkPsychologistByCode = onCall({ cors: true }, async (request) => {
+  assertAuthenticated(request);
+
+  const code = `${request.data?.code ?? ""}`.trim().toUpperCase();
+  if (!code) {
+    throw new HttpsError("invalid-argument", "Ingresa el código de tu psicólogo.");
+  }
+
+  const firestore = admin.firestore();
+  const patientRef = firestore.collection("users").doc(request.auth.uid);
+
+  const patientSnap = await patientRef.get();
+  if (patientSnap.exists && patientSnap.data().psychologistRef) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Ya tienes un psicólogo asignado. Si necesitas cambiarlo, contacta al administrador."
+    );
+  }
+
+  const matches = await firestore
+    .collection("users")
+    .where("role", "==", "psicologo")
+    .where("linkCode", "==", code)
+    .limit(1)
+    .get();
+  if (matches.empty) {
+    throw new HttpsError("not-found", "Ese código no corresponde a ningún psicólogo.");
+  }
+
+  const conversationId = await linkPatientToPsychologist(
+    patientRef,
+    matches.docs[0].ref
+  );
+  return { conversationId };
+});
+
+exports.adminAssignPsychologist = onCall({ cors: true }, async (request) => {
+  assertAuthenticated(request);
+  await assertIsAdmin(request.auth.uid);
+
+  const patientId = `${request.data?.patientId ?? ""}`.trim();
+  const psychologistId = `${request.data?.psychologistId ?? ""}`.trim();
+  if (!patientId || !psychologistId) {
+    throw new HttpsError("invalid-argument", "Selecciona un paciente y un psicólogo.");
+  }
+
+  const firestore = admin.firestore();
+  const patientRef = firestore.collection("users").doc(patientId);
+  const psychologistRef = firestore.collection("users").doc(psychologistId);
+
+  const [patientSnap, psychologistSnap] = await Promise.all([
+    patientRef.get(),
+    psychologistRef.get(),
+  ]);
+  if (!patientSnap.exists || patientSnap.data().role !== "paciente") {
+    throw new HttpsError("not-found", "Ese paciente no existe.");
+  }
+  if (!psychologistSnap.exists || psychologistSnap.data().role !== "psicologo") {
+    throw new HttpsError("not-found", "Ese psicólogo no existe.");
+  }
+
+  const conversationId = await linkPatientToPsychologist(patientRef, psychologistRef);
+  return { conversationId };
+});
+
+/**
+ * Admin-only diagnostic: compares a patient's stored `psychologistRef`
+ * value against a reference freshly reconstructed from the same uid (the
+ * same way `currentUserReference` and the admin's own "Consultantes: N"
+ * count do), and reports whether Firestore's `==` query filter actually
+ * finds the patient using each. Exists to debug "the patient is linked but
+ * doesn't show up in the psychologist's list" reports without needing
+ * direct Firestore console/API access.
+ */
+exports.adminDiagnosePatientLink = onCall({ cors: true }, async (request) => {
+  assertAuthenticated(request);
+  await assertIsAdmin(request.auth.uid);
+
+  const patientId = `${request.data?.patientId ?? ""}`.trim();
+  if (!patientId) {
+    throw new HttpsError("invalid-argument", "Falta patientId.");
+  }
+
+  const db = admin.firestore();
+  const patientSnap = await db.collection("users").doc(patientId).get();
+  if (!patientSnap.exists) {
+    throw new HttpsError("not-found", "Paciente no encontrado.");
+  }
+  const patientData = patientSnap.data();
+  const storedRef = patientData.psychologistRef;
+
+  const result = {
+    patientId,
+    role: patientData.role ?? null,
+    storedPsychologistRefPath: storedRef ? storedRef.path : null,
+  };
+  if (!storedRef) return result;
+
+  const withStoredRef = await db.collection("users")
+    .where("role", "==", "paciente")
+    .where("psychologistRef", "==", storedRef)
+    .get();
+  result.matchCountUsingStoredRef = withStoredRef.size;
+
+  const reconstructedRef = db.collection("users").doc(storedRef.id);
+  result.reconstructedRefPath = reconstructedRef.path;
+  result.reconstructedEqualsStored = reconstructedRef.isEqual(storedRef);
+
+  const withReconstructedRef = await db.collection("users")
+    .where("role", "==", "paciente")
+    .where("psychologistRef", "==", reconstructedRef)
+    .get();
+  result.matchCountUsingReconstructedRef = withReconstructedRef.size;
+
+  return result;
+});
+
+/**
+ * Any signed-in psychologist can call this for themselves (no id typed by
+ * anyone -- uses `request.auth.uid` directly, so there's zero chance of a
+ * transcription mix-up like '0' vs 'O'). Reports, character-code-exact, how
+ * many patients a reference built from their own uid actually matches, and
+ * separately finds any patient whose stored `psychologistRef` merely LOOKS
+ * like their uid (same `.id` string) but isn't the same reference -- which
+ * is exactly the kind of near-miss a human eyeballing two strings would
+ * never reliably catch.
+ */
+exports.diagnoseMyPatients = onCall({ cors: true }, async (request) => {
+  assertAuthenticated(request);
+  const myUid = request.auth.uid;
+  const db = admin.firestore();
+  const myRef = db.collection("users").doc(myUid);
+
+  const exactMatch = await db.collection("users")
+    .where("role", "==", "paciente")
+    .where("psychologistRef", "==", myRef)
+    .get();
+
+  const allPatients = await db.collection("users").where("role", "==", "paciente").get();
+  const nearMisses = [];
+  for (const doc of allPatients.docs) {
+    const ref = doc.data().psychologistRef;
+    if (!ref) continue;
+    const idMatches = ref.id === myUid;
+    const isSameRef = ref.isEqual(myRef);
+    if (idMatches && !isSameRef) {
+      nearMisses.push({
+        patientId: doc.id,
+        myUid,
+        storedRefId: ref.id,
+        myUidCharCodes: [...myUid].map((c) => c.charCodeAt(0)),
+        storedRefIdCharCodes: [...ref.id].map((c) => c.charCodeAt(0)),
+      });
+    }
+  }
+
+  return {
+    myUid,
+    myRefPath: myRef.path,
+    exactMatchCount: exactMatch.size,
+    exactMatchPatientIds: exactMatch.docs.map((d) => d.id),
+    nearMisses,
+  };
+});
+
+/**
+ * Admin-only: activates or deactivates a psychologist's or patient's
+ * account. Disables the underlying Firebase Auth user (blocking sign-in
+ * and invalidating their session at the next token refresh) in addition to
+ * mirroring `active` on their `users/{uid}` doc for the UI -- toggling only
+ * the Firestore field would leave a still-logged-in session fully working.
+ */
+exports.setAccountActive = onCall({ cors: true }, async (request) => {
+  assertAuthenticated(request);
+  await assertIsAdmin(request.auth.uid);
+
+  const uid = `${request.data?.uid ?? ""}`.trim();
+  const active = request.data?.active;
+  if (!uid || typeof active !== "boolean") {
+    throw new HttpsError("invalid-argument", "Datos inválidos.");
+  }
+  if (uid === request.auth.uid) {
+    throw new HttpsError("invalid-argument", "No puedes desactivar tu propia cuenta.");
+  }
+
+  const userSnap = await admin.firestore().collection("users").doc(uid).get();
+  if (!userSnap.exists || userSnap.data().role === "admin") {
+    throw new HttpsError("not-found", "Esa cuenta no existe o no se puede modificar.");
+  }
+
+  await admin.auth().updateUser(uid, { disabled: !active });
+  await admin.firestore().collection("users").doc(uid).set({ active }, { merge: true });
+
+  return { active };
 });
 
 exports.sendConversationMessage = onCall({ cors: true }, async (request) => {
@@ -180,3 +425,37 @@ exports.sendConversationMessage = onCall({ cors: true }, async (request) => {
 
   return { sent: true };
 });
+
+/**
+ * Stamps `lastActivityAt` on the patient's own `users/{uid}` doc so the
+ * psychologist dashboard can show "última actividad" without querying every
+ * patient's records/tasks live. Silently no-ops if the document has no
+ * `userRef` or the referenced user doesn't exist (shouldn't happen for
+ * patient-owned collections, but a trigger must never throw on bad data).
+ */
+async function touchLastActivity(userRef) {
+  if (!userRef) return;
+  try {
+    await userRef.update({
+      lastActivityAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("[touchLastActivity] failed for", userRef.path, error);
+    await logServerError(`touchLastActivity failed for ${userRef.path}`, error, userRef.id);
+  }
+}
+
+function activityTrigger(documentPath) {
+  return onDocumentWritten(documentPath, (event) => {
+    // Only create/update count as "activity"; a deleted document has no
+    // `after` snapshot to read `userRef` from.
+    if (!event.data?.after?.exists) return null;
+    return touchLastActivity(event.data.after.data()?.userRef ?? null);
+  });
+}
+
+exports.onRecordActivity = activityTrigger("records/{recordId}");
+exports.onBehavioralRecordActivity = activityTrigger(
+  "behavioral_records/{recordId}"
+);
+exports.onTaskActivity = activityTrigger("tasks/{taskId}");

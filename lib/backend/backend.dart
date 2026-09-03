@@ -11,6 +11,10 @@ import 'schema/behavioral_records_record.dart';
 import 'schema/tasks_record.dart';
 import 'schema/user_prefs_record.dart';
 import 'schema/users_record.dart';
+import 'schema/sessions_record.dart';
+import 'schema/activities_record.dart';
+import 'schema/activity_assignments_record.dart';
+import 'schema/app_errors_record.dart';
 
 export 'dart:async' show StreamSubscription;
 export 'package:cloud_firestore/cloud_firestore.dart' hide Order;
@@ -25,6 +29,10 @@ export 'schema/behavioral_records_record.dart';
 export 'schema/tasks_record.dart';
 export 'schema/user_prefs_record.dart';
 export 'schema/users_record.dart';
+export 'schema/sessions_record.dart';
+export 'schema/activities_record.dart';
+export 'schema/activity_assignments_record.dart';
+export 'schema/app_errors_record.dart';
 
 /// Functions to query RecordsRecords (as a Stream and as a Future).
 Future<int> queryRecordsRecordCount({
@@ -244,6 +252,155 @@ Future<List<UsersRecord>> queryUsersRecordOnce({
     queryCollectionOnce(
       UsersRecord.collection,
       UsersRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query SessionsRecords (as a Stream and as a Future).
+Future<int> querySessionsRecordCount({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      SessionsRecord.collection,
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<SessionsRecord>> querySessionsRecord({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      SessionsRecord.collection,
+      SessionsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<SessionsRecord>> querySessionsRecordOnce({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      SessionsRecord.collection,
+      SessionsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query ActivitiesRecords (as a Stream and as a Future).
+Future<int> queryActivitiesRecordCount({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      ActivitiesRecord.collection,
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<ActivitiesRecord>> queryActivitiesRecord({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      ActivitiesRecord.collection,
+      ActivitiesRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<ActivitiesRecord>> queryActivitiesRecordOnce({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      ActivitiesRecord.collection,
+      ActivitiesRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query ActivityAssignmentsRecords (as a Stream and as a
+/// Future).
+Future<int> queryActivityAssignmentsRecordCount({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      ActivityAssignmentsRecord.collection,
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<ActivityAssignmentsRecord>> queryActivityAssignmentsRecord({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      ActivityAssignmentsRecord.collection,
+      ActivityAssignmentsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<ActivityAssignmentsRecord>> queryActivityAssignmentsRecordOnce({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      ActivityAssignmentsRecord.collection,
+      ActivityAssignmentsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query AppErrorsRecords (as a Stream and as a Future).
+Future<int> queryAppErrorsRecordCount({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      AppErrorsRecord.collection,
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<AppErrorsRecord>> queryAppErrorsRecord({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      AppErrorsRecord.collection,
+      AppErrorsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<AppErrorsRecord>> queryAppErrorsRecordOnce({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      AppErrorsRecord.collection,
+      AppErrorsRecord.fromSnapshot,
       queryBuilder: queryBuilder,
       limit: limit,
       singleRecord: singleRecord,

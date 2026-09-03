@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// One patient's chat with their assigned psychologist. [conversationId] is
 /// always the patient's own uid (see `conversations/{patientUid}` in
-/// firestore.rules / the `assignPsychologist` Cloud Function) — both the
+/// firestore.rules / the `linkPsychologistByCode` Cloud Function) — both the
 /// patient and their psychologist open the exact same conversation id.
 ///
 /// Messages are read live via `.snapshots()` (protected by Firestore rules:

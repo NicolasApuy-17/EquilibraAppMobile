@@ -43,7 +43,7 @@ export '/pages/psychologist_home/psychologist_home_widget.dart'
     show PsychologistHomeWidget;
 export '/pages/psychologist_patient_detail/psychologist_patient_detail_widget.dart'
     show PsychologistPatientDetailWidget;
-export '/pages/choose_psychologist/choose_psychologist_widget.dart'
-    show ChoosePsychologistWidget;
+export '/pages/link_psychologist/link_psychologist_widget.dart'
+    show LinkPsychologistWidget;
 export '/pages/psychologist_chat/psychologist_chat_widget.dart'
     show PsychologistChatWidget;

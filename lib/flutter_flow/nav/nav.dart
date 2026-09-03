@@ -253,10 +253,10 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           ),
         ),
         FFRoute(
-          name: ChoosePsychologistWidget.routeName,
-          path: ChoosePsychologistWidget.routePath,
+          name: LinkPsychologistWidget.routeName,
+          path: LinkPsychologistWidget.routePath,
           requireAuth: true,
-          builder: (context, params) => ChoosePsychologistWidget(),
+          builder: (context, params) => LinkPsychologistWidget(),
         ),
         FFRoute(
           name: PsychologistChatWidget.routeName,

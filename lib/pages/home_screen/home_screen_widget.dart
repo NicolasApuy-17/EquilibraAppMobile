@@ -734,15 +734,16 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                             // (the Gemini assistant this
                                             // used to open was removed
                                             // entirely). If no psychologist
-                                            // is assigned yet, send them to
-                                            // pick one first instead of
+                                            // is linked yet, send them to
+                                            // enter their psychologist's
+                                            // link code first instead of
                                             // failing silently.
                                             final psychologistRef =
                                                 currentUserDocument
                                                     ?.psychologistRef;
                                             if (psychologistRef == null) {
                                               context.pushNamed(
-                                                  ChoosePsychologistWidget
+                                                  LinkPsychologistWidget
                                                       .routeName);
                                             } else {
                                               context.pushNamed(

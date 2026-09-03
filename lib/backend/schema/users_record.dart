@@ -59,10 +59,42 @@ class UsersRecord extends FirestoreRecord {
 
   // "psychologistRef" field. Only meaningful for role == 'paciente': the
   // psychologist this patient currently has assigned, if any. Only ever
-  // written server-side (see the `assignPsychologist` Cloud Function).
+  // written server-side (see the `linkPsychologistByCode` /
+  // `adminAssignPsychologist` Cloud Functions).
   DocumentReference? _psychologistRef;
   DocumentReference? get psychologistRef => _psychologistRef;
   bool hasPsychologistRef() => _psychologistRef != null;
+
+  // "linkCode" field. Only meaningful for role == 'psicologo': the unique
+  // code (e.g. "FABRIZZIO-4821") patients enter to link to this
+  // psychologist. Generated once by the `createPsychologist` Cloud
+  // Function; never written by a client.
+  String? _linkCode;
+  String get linkCode => _linkCode ?? '';
+  bool hasLinkCode() => _linkCode != null;
+
+  // "psychologistLinkedAt" field. Only meaningful for role == 'paciente':
+  // when this patient was linked to their current psychologist. Only ever
+  // written server-side.
+  DateTime? _psychologistLinkedAt;
+  DateTime? get psychologistLinkedAt => _psychologistLinkedAt;
+  bool hasPsychologistLinkedAt() => _psychologistLinkedAt != null;
+
+  // "lastActivityAt" field. Only meaningful for role == 'paciente': the
+  // most recent time this patient created/updated a record, behavioral
+  // record or task. Maintained by Firestore triggers, never written by a
+  // client directly.
+  DateTime? _lastActivityAt;
+  DateTime? get lastActivityAt => _lastActivityAt;
+  bool hasLastActivityAt() => _lastActivityAt != null;
+
+  // "active" field. Defaults to true (absent == active). Only ever set by
+  // the `setAccountActive` Cloud Function, which also disables/enables the
+  // underlying Firebase Auth account -- this field is a read-only mirror
+  // of that for the UI, never a client write path.
+  bool? _active;
+  bool get active => _active ?? true;
+  bool hasActive() => _active != null;
 
   void _initializeFields() {
     _email = snapshotData['email'] as String?;
@@ -75,6 +107,11 @@ class UsersRecord extends FirestoreRecord {
     _specialty = snapshotData['specialty'] as String?;
     _psychologistRef =
         snapshotData['psychologistRef'] as DocumentReference?;
+    _linkCode = snapshotData['linkCode'] as String?;
+    _psychologistLinkedAt =
+        snapshotData['psychologistLinkedAt'] as DateTime?;
+    _lastActivityAt = snapshotData['lastActivityAt'] as DateTime?;
+    _active = snapshotData['active'] as bool?;
   }
 
   static CollectionReference get collection =>

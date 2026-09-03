@@ -7,35 +7,23 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/index.dart';
 import '/utils/date_format_es.dart';
 import '/utils/error_messages.dart';
+import '/utils/task_status.dart';
 import '/utils/validators.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'tasks_model.dart';
 export 'tasks_model.dart';
 
-const _kTaskStatuses = ['pendiente', 'en_proceso', 'completada'];
+const _kTaskStatuses = kTaskStatuses;
+String _statusLabel(String status) => taskStatusLabel(status);
+Color _statusColor(BuildContext context, String status) =>
+    taskStatusColor(context, status);
 
-String _statusLabel(String status) {
-  switch (status) {
-    case 'en_proceso':
-      return 'En proceso';
-    case 'completada':
-      return 'Completada';
-    default:
-      return 'Pendiente';
-  }
-}
-
-Color _statusColor(BuildContext context, String status) {
-  switch (status) {
-    case 'en_proceso':
-      return FlutterFlowTheme.of(context).info;
-    case 'completada':
-      return FlutterFlowTheme.of(context).success;
-    default:
-      return FlutterFlowTheme.of(context).warning;
-  }
-}
+/// True when [task] was created by the patient's psychologist rather than
+/// by the patient themself -- those tasks are shown read-only (only a
+/// response, never an edit of the assignment itself).
+bool _isAssignedTask(TasksRecord task) =>
+    task.hasCreatedByRef() && task.createdByRef!.id != task.userRef?.id;
 
 class TasksWidget extends StatefulWidget {
   const TasksWidget({super.key});
@@ -69,6 +57,15 @@ class _TasksWidgetState extends State<TasksWidget> {
   }
 
   Future<void> _openTaskForm({TasksRecord? existingTask}) async {
+    if (existingTask != null && _isAssignedTask(existingTask)) {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => _TaskResponseSheet(task: existingTask),
+      );
+      return;
+    }
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -110,9 +107,15 @@ class _TasksWidgetState extends State<TasksWidget> {
   }
 
   Future<void> _toggleComplete(TasksRecord task) async {
+    // Assigned tasks with a response type beyond a plain checkbox go
+    // through `_TaskResponseSheet` instead (opened by tapping the card).
+    if (_isAssignedTask(task) && task.responseType != 'completado') return;
     try {
+      final nowDone = task.status != 'completada';
       await task.reference.update(createTasksRecordData(
-        status: task.status == 'completada' ? 'pendiente' : 'completada',
+        status: nowDone ? 'completada' : 'pendiente',
+        completedTime: nowDone ? DateTime.now() : null,
+        responseAt: _isAssignedTask(task) && nowDone ? DateTime.now() : null,
       ));
     } catch (e) {
       if (!mounted) return;
@@ -397,7 +400,9 @@ class _TasksWidgetState extends State<TasksWidget> {
                             task: task,
                             onTap: () => _openTaskForm(existingTask: task),
                             onToggleComplete: () => _toggleComplete(task),
-                            onDelete: () => _confirmDelete(task),
+                            onDelete: _isAssignedTask(task)
+                                ? null
+                                : () => _confirmDelete(task),
                           ),
                         );
                       },
@@ -526,11 +531,12 @@ class _TaskCard extends StatelessWidget {
   final TasksRecord task;
   final VoidCallback onTap;
   final VoidCallback onToggleComplete;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
     final isDone = task.status == 'completada';
+    final isAssigned = _isAssignedTask(task);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24.0),
@@ -562,6 +568,33 @@ class _TaskCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (isAssigned)
+                        Padding(
+                          padding: EdgeInsetsDirectional.fromSTEB(
+                              0.0, 0.0, 0.0, 4.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.psychology_alt_rounded,
+                                  size: 14.0,
+                                  color: FlutterFlowTheme.of(context).primary),
+                              const SizedBox(width: 4.0),
+                              Text(
+                                'Asignada por tu psicólogo',
+                                style: FlutterFlowTheme.of(context)
+                                    .labelSmall
+                                    .override(
+                                      font: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.bold),
+                                      color:
+                                          FlutterFlowTheme.of(context).primary,
+                                      letterSpacing: 0.0,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
                       Text(
                         task.title.isEmpty ? 'Sin título' : task.title,
                         style: FlutterFlowTheme.of(context)
@@ -642,18 +675,36 @@ class _TaskCard extends StatelessWidget {
                           ],
                         ),
                       ),
+                      if (task.hasFeedback() && task.feedback!.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsetsDirectional.fromSTEB(
+                              0.0, 8.0, 0.0, 0.0),
+                          child: Text(
+                            'Feedback de tu psicólogo: ${task.feedback}',
+                            style: FlutterFlowTheme.of(context)
+                                .bodySmall
+                                .override(
+                                  font:
+                                      GoogleFonts.outfit(fontStyle: FontStyle.italic),
+                                  color: FlutterFlowTheme.of(context).primary,
+                                  letterSpacing: 0.0,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ),
-              InkWell(
-                onTap: onDelete,
-                child: Icon(
-                  Icons.delete_outline_rounded,
-                  color: FlutterFlowTheme.of(context).secondaryText,
-                  size: 22.0,
+              if (onDelete != null)
+                InkWell(
+                  onTap: onDelete,
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    color: FlutterFlowTheme.of(context).secondaryText,
+                    size: 22.0,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -757,12 +808,15 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
     });
     try {
       final description = _descriptionController.text.trim();
+      final completedTime =
+          _status == 'completada' ? DateTime.now() : null;
       if (_isEditing) {
         await widget.existingTask!.reference.update(createTasksRecordData(
           title: title,
           description: description,
           dueDate: _dueDate,
           status: _status,
+          completedTime: completedTime,
         ));
       } else {
         await TasksRecord.collection.doc().set(createTasksRecordData(
@@ -771,7 +825,9 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
               dueDate: _dueDate,
               status: _status,
               userRef: currentUserReference,
+              createdByRef: currentUserReference,
               createdTime: getCurrentTimestamp,
+              completedTime: completedTime,
             ));
       }
       if (mounted) Navigator.pop(context);
@@ -1009,6 +1065,308 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Response form for a task the patient's psychologist assigned. Unlike
+/// `_TaskFormSheet`, the assignment itself (title/instructions/dueDate) is
+/// read-only here -- Firestore rules only let the patient touch
+/// `status`/`responseText`/`responseValue`/`responseAt`/`completedTime`.
+class _TaskResponseSheet extends StatefulWidget {
+  const _TaskResponseSheet({required this.task});
+
+  final TasksRecord task;
+
+  @override
+  State<_TaskResponseSheet> createState() => _TaskResponseSheetState();
+}
+
+class _TaskResponseSheetState extends State<_TaskResponseSheet> {
+  late TextEditingController _textController;
+  late double _scaleValue;
+  late String _status;
+  bool _isSaving = false;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController(text: widget.task.responseText);
+    _scaleValue = widget.task.responseValue ?? 5.0;
+    _status = widget.task.status;
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final responseType = widget.task.responseType;
+    if (responseType == 'texto' &&
+        _textController.text.trim().isEmpty &&
+        _status == 'completada') {
+      setState(() => _errorText = 'Escribe tu respuesta antes de guardar.');
+      return;
+    }
+    setState(() {
+      _isSaving = true;
+      _errorText = null;
+    });
+    try {
+      final now = DateTime.now();
+      await widget.task.reference.update(createTasksRecordData(
+        status: _status,
+        responseText: responseType == 'texto'
+            ? normalizeWhitespace(_textController.text)
+            : null,
+        responseValue: responseType == 'escala' ? _scaleValue : null,
+        responseAt: _status == 'completada' ? now : null,
+        completedTime: _status == 'completada' ? now : null,
+      ));
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(
+            () => _errorText = genericSaveErrorMessage('guardar tu respuesta'));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final task = widget.task;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: FlutterFlowTheme.of(context).primaryBackground,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(28.0),
+            topRight: Radius.circular(28.0),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 24.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.psychology_alt_rounded,
+                        size: 16.0, color: FlutterFlowTheme.of(context).primary),
+                    const SizedBox(width: 6.0),
+                    Text(
+                      'Asignada por tu psicólogo',
+                      style: FlutterFlowTheme.of(context).labelMedium.override(
+                            font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                            color: FlutterFlowTheme.of(context).primary,
+                            letterSpacing: 0.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8.0),
+                Text(
+                  task.title.isEmpty ? 'Sin título' : task.title,
+                  style: FlutterFlowTheme.of(context).titleMedium.override(
+                        font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                        color: FlutterFlowTheme.of(context).primaryText,
+                        letterSpacing: 0.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                if (task.description.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 6.0, 0.0, 0.0),
+                    child: Text(
+                      task.description,
+                      style: FlutterFlowTheme.of(context).bodyMedium.override(
+                            font: GoogleFonts.outfit(),
+                            color: FlutterFlowTheme.of(context).secondaryText,
+                            letterSpacing: 0.0,
+                          ),
+                    ),
+                  ),
+                if (task.hasFrequency() && task.frequency.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
+                    child: Text(
+                      'Frecuencia: ${taskFrequencyLabel(task.frequency)}',
+                      style: FlutterFlowTheme.of(context).bodySmall.override(
+                            font: GoogleFonts.outfit(),
+                            color: FlutterFlowTheme.of(context).secondaryText,
+                            letterSpacing: 0.0,
+                          ),
+                    ),
+                  ),
+                if (task.dueDate != null)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
+                    child: Text(
+                      'Fecha límite: ${formatDateEs(task.dueDate!)}',
+                      style: FlutterFlowTheme.of(context).bodySmall.override(
+                            font: GoogleFonts.outfit(),
+                            color: FlutterFlowTheme.of(context).secondaryText,
+                            letterSpacing: 0.0,
+                          ),
+                    ),
+                  ),
+                const SizedBox(height: 16.0),
+                if (task.responseType == 'texto') ...[
+                  Text(
+                    'Tu respuesta',
+                    style: FlutterFlowTheme.of(context).labelMedium.override(
+                          font: GoogleFonts.outfit(),
+                          color: FlutterFlowTheme.of(context).primaryText,
+                          letterSpacing: 0.0,
+                        ),
+                  ),
+                  const SizedBox(height: 4.0),
+                  TextField(
+                    controller: _textController,
+                    minLines: 3,
+                    maxLines: 6,
+                    decoration: InputDecoration(
+                      hintText: 'Escribe tu respuesta...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16.0),
+                ] else if (task.responseType == 'escala') ...[
+                  Text(
+                    'Tu respuesta: ${_scaleValue.round()}/10',
+                    style: FlutterFlowTheme.of(context).labelMedium.override(
+                          font: GoogleFonts.outfit(),
+                          color: FlutterFlowTheme.of(context).primaryText,
+                          letterSpacing: 0.0,
+                        ),
+                  ),
+                  Slider(
+                    value: _scaleValue,
+                    min: 1.0,
+                    max: 10.0,
+                    divisions: 9,
+                    label: _scaleValue.round().toString(),
+                    onChanged: (value) => setState(() => _scaleValue = value),
+                  ),
+                  const SizedBox(height: 8.0),
+                ] else if (task.responseType == 'registro') ...[
+                  Text(
+                    'Esta indicación se completa haciendo un registro en la '
+                    'app (emocional o de conducta). Cuando lo hayas hecho, '
+                    'márcala como completada.',
+                    style: FlutterFlowTheme.of(context).bodySmall.override(
+                          font: GoogleFonts.outfit(),
+                          color: FlutterFlowTheme.of(context).secondaryText,
+                          letterSpacing: 0.0,
+                        ),
+                  ),
+                  const SizedBox(height: 12.0),
+                ],
+                Text(
+                  'Estado',
+                  style: FlutterFlowTheme.of(context).labelMedium.override(
+                        font: GoogleFonts.outfit(),
+                        color: FlutterFlowTheme.of(context).primaryText,
+                        letterSpacing: 0.0,
+                      ),
+                ),
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 16.0),
+                  child: Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    children: [
+                      for (final status in kTaskStatuses)
+                        _FilterChip(
+                          label: taskStatusLabel(status),
+                          selected: _status == status,
+                          onTap: () => setState(() => _status = status),
+                        ),
+                    ],
+                  ),
+                ),
+                if (task.hasFeedback() && task.feedback!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 16.0),
+                    child: Container(
+                      padding: const EdgeInsets.all(12.0),
+                      decoration: BoxDecoration(
+                        color: FlutterFlowTheme.of(context).primary10,
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                      child: Text(
+                        'Feedback de tu psicólogo: ${task.feedback}',
+                        style: FlutterFlowTheme.of(context).bodySmall.override(
+                              font: GoogleFonts.outfit(fontStyle: FontStyle.italic),
+                              color: FlutterFlowTheme.of(context).primaryText,
+                              letterSpacing: 0.0,
+                              fontStyle: FontStyle.italic,
+                            ),
+                      ),
+                    ),
+                  ),
+                if (_errorText != null)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 12.0),
+                    child: Text(
+                      _errorText!,
+                      style: FlutterFlowTheme.of(context).bodySmall.override(
+                            font: GoogleFonts.outfit(),
+                            color: FlutterFlowTheme.of(context).error,
+                            letterSpacing: 0.0,
+                          ),
+                    ),
+                  ),
+                InkWell(
+                  onTap: _isSaving ? null : _submit,
+                  child: Container(
+                    height: 48.0,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: FlutterFlowTheme.of(context).primary,
+                      borderRadius: BorderRadius.circular(24.0),
+                    ),
+                    child: _isSaving
+                        ? SizedBox(
+                            width: 20.0,
+                            height: 20.0,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.0,
+                              valueColor: AlwaysStoppedAnimation(
+                                  FlutterFlowTheme.of(context).onPrimary),
+                            ),
+                          )
+                        : Text(
+                            'Guardar respuesta',
+                            style: FlutterFlowTheme.of(context)
+                                .labelMedium
+                                .override(
+                                  font: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.bold),
+                                  color: FlutterFlowTheme.of(context).onPrimary,
+                                  letterSpacing: 0.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

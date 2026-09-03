@@ -3,6 +3,7 @@ import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
+import '/services/psychologist_service.dart';
 import '/utils/validators.dart';
 import 'dart:ui';
 import '/index.dart';
@@ -28,6 +29,12 @@ class _CreateAccountScreenWidgetState extends State<CreateAccountScreenWidget> {
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // Not part of the FlutterFlow-generated model above: an optional
+  // psychologist link code entered at sign-up (see `_psychologistService`
+  // usage in the "Crear cuenta" button below).
+  final _psychologistCodeController = TextEditingController();
+  final _psychologistService = PsychologistService();
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +56,7 @@ class _CreateAccountScreenWidgetState extends State<CreateAccountScreenWidget> {
   @override
   void dispose() {
     _model.dispose();
+    _psychologistCodeController.dispose();
 
     super.dispose();
   }
@@ -650,6 +658,33 @@ class _CreateAccountScreenWidgetState extends State<CreateAccountScreenWidget> {
                                   .asValidator(context),
                             ),
                           ),
+                          Container(
+                            width: double.infinity,
+                            child: TextFormField(
+                              controller: _psychologistCodeController,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: InputDecoration(
+                                labelText: 'Código de tu psicólogo (opcional)',
+                                hintText: 'NOMBRE-1234',
+                                filled: true,
+                                fillColor: FlutterFlowTheme.of(context)
+                                    .secondaryBackground,
+                                contentPadding: EdgeInsetsDirectional.fromSTEB(
+                                    16.0, 14.0, 16.0, 14.0),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14.0),
+                                ),
+                              ),
+                              style: FlutterFlowTheme.of(context)
+                                  .bodyLarge
+                                  .override(
+                                    font: GoogleFonts.outfit(),
+                                    color:
+                                        FlutterFlowTheme.of(context).primaryText,
+                                    letterSpacing: 0.0,
+                                  ),
+                            ),
+                          ),
                           FFButtonWidget(
                             onPressed: () async {
                               if (_model.formKey.currentState == null ||
@@ -691,6 +726,31 @@ class _CreateAccountScreenWidgetState extends State<CreateAccountScreenWidget> {
                                         FlutterFlowTheme.of(context).error,
                                   ),
                                 );
+                              }
+
+                              final psychologistCode =
+                                  _psychologistCodeController.text.trim();
+                              if (psychologistCode.isNotEmpty) {
+                                try {
+                                  await _psychologistService
+                                      .linkPsychologistByCode(psychologistCode);
+                                } on PsychologistServiceException catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Tu cuenta se creó, pero no se pudo '
+                                          'vincular al psicólogo: ${e.message} '
+                                          'Puedes intentarlo de nuevo desde tu '
+                                          'perfil.',
+                                        ),
+                                        duration: Duration(milliseconds: 5000),
+                                        backgroundColor:
+                                            FlutterFlowTheme.of(context).error,
+                                      ),
+                                    );
+                                  }
+                                }
                               }
 
                               if (!context.mounted) return;

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:provider/provider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'auth/firebase_auth/firebase_user_provider.dart';
 import 'auth/firebase_auth/auth_util.dart';
 
@@ -13,6 +16,7 @@ import '/flutter_flow/flutter_flow_theme.dart';
 import 'flutter_flow/flutter_flow_util.dart';
 import 'flutter_flow/nav/nav.dart';
 import 'index.dart';
+import '/utils/error_logging.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +24,29 @@ void main() async {
   usePathUrlStrategy();
 
   await initFirebase();
+
+  // Every uncaught error from here on is reported both to Crashlytics (full
+  // native stack trace, for developers in the Firebase Console) and to the
+  // `app_errors` Firestore collection (a short summary, for admins in the
+  // app's own "Incidencias" tab) -- see lib/utils/error_logging.dart.
+  FlutterError.onError = (details) {
+    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    logAppError(
+      context: 'Flutter framework error',
+      error: details.exception,
+      stackTrace: details.stack,
+      fatal: true,
+    );
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    logAppError(
+      context: 'Uncaught async error',
+      error: error,
+      stackTrace: stack,
+      fatal: true,
+    );
+    return true;
+  };
 
   final appState = FFAppState(); // Initialize FFAppState
   await appState.initializePersistedState();

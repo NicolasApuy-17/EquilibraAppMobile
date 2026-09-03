@@ -19,12 +19,23 @@ service cloud.firestore {
         get(userRef(patientUid)).data.psychologistRef == userRef(request.auth.uid);
     }
 
+    // Fields a signed-in user may set on their own `users/{uid}` doc
+    // directly from the client (see `maybeCreateUser` / `updateUserProfile`
+    // in lib/backend/backend.dart). Everything else on that document --
+    // `role`, `psychologistRef`, `psychologistLinkedAt`, `lastActivityAt`,
+    // `linkCode`, `specialty` -- is only ever written by Cloud Functions
+    // using the Admin SDK, which bypasses these rules entirely.
+    function selfManagedUserFields() {
+      return ['email', 'display_name', 'photo_url', 'uid', 'phone_number', 'created_time'];
+    }
+
     match /records/{document} {
       allow create: if request.auth != null &&
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         isAssignedPsychologist(resource.data.userRef.id));
+         isAssignedPsychologist(resource.data.userRef.id) ||
+         isAdmin());
       allow update: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
          (isAssignedPsychologist(resource.data.userRef.id) &&
@@ -39,7 +50,8 @@ service cloud.firestore {
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         isAssignedPsychologist(resource.data.userRef.id));
+         isAssignedPsychologist(resource.data.userRef.id) ||
+         isAdmin());
       allow update: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
          (isAssignedPsychologist(resource.data.userRef.id) &&
@@ -56,14 +68,87 @@ service cloud.firestore {
       allow delete: if request.auth.uid == document;
     }
 
+    // A task is either self-created by the patient (`createdByRef ==
+    // userRef`) or assigned by their psychologist. `resource.data.get(...)`
+    // with a default is used when reading `createdByRef` back because tasks
+    // created before this field existed don't have it -- treated as
+    // self-created, which is what they actually were.
     match /tasks/{document} {
       allow create: if request.auth != null &&
-        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+        request.resource.data.createdByRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
+        (request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+         isAssignedPsychologist(request.resource.data.userRef.id));
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         isAssignedPsychologist(resource.data.userRef.id));
-      allow update, delete: if request.auth != null &&
-        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+         isAssignedPsychologist(resource.data.userRef.id) ||
+         isAdmin());
+      allow update: if request.auth != null &&
+        ((resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
+          (resource.data.get('createdByRef', resource.data.userRef) == resource.data.userRef
+            ? request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['title', 'description', 'dueDate', 'status', 'frequency', 'responseType', 'completedTime'])
+            : request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'responseText', 'responseValue', 'responseAt', 'completedTime']))) ||
+         (isAssignedPsychologist(resource.data.userRef.id) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['title', 'description', 'dueDate', 'frequency', 'responseType', 'feedback', 'feedbackAt'])));
+      allow delete: if request.auth != null &&
+        resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
+        resource.data.get('createdByRef', resource.data.userRef) == resource.data.userRef;
+    }
+
+    // Clinical session notes: 100% private to the psychologist who wrote
+    // them. Neither the patient nor an admin has any read/write path here.
+    match /sessions/{document} {
+      allow create: if request.auth != null &&
+        request.resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
+        isAssignedPsychologist(request.resource.data.patientRef.id);
+      allow read, update, delete: if request.auth != null &&
+        resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    // One free-text private note per patient, written by their assigned
+    // psychologist (document id == patient's uid). Never readable by the
+    // patient themself -- deliberately no `request.auth.uid == document`
+    // clause here, only `isAssignedPsychologist`.
+    match /patient_notes/{document} {
+      allow read, write: if isAssignedPsychologist(document);
+    }
+
+    // Client-side error/incident log (see lib/utils/error_logging.dart).
+    // Any signed-in user's app can write an entry when it hits an unhandled
+    // error; only an admin can read the log back, from the admin panel's
+    // "Incidencias" tab. Immutable once written -- no update/delete.
+    match /app_errors/{document} {
+      allow create: if request.auth != null;
+      allow read: if isAdmin();
+    }
+
+    // Admin-managed catalog of tools/activities. Any signed-in user can
+    // read it (a patient needs to see the name/description of what was
+    // assigned to them; a psychologist needs to browse it to assign from
+    // it); only an admin can add/edit/remove entries.
+    match /activities/{document} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // One activity assigned to one patient by their psychologist. The
+    // assignment's own fields are immutable once created; only the patient
+    // may update their progress on it (status/openedAt/completedAt).
+    match /activity_assignments/{document} {
+      allow create: if request.auth != null &&
+        request.resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
+        isAssignedPsychologist(request.resource.data.patientRef.id);
+      allow read: if request.auth != null &&
+        (resource.data.patientRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+         resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+         isAdmin());
+      allow update: if request.auth != null &&
+        resource.data.patientRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'openedAt', 'completedAt']);
+      allow delete: if request.auth != null &&
+        resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
     match /goals/{document} {
@@ -79,26 +164,42 @@ service cloud.firestore {
     // Patient- and psychologist-owned fields on `users` are still only ever
     // written by their owner directly (create/update/delete unchanged) or by
     // Cloud Functions using the Admin SDK, which bypasses these rules
-    // entirely (see `createPsychologist` / `assignPsychologist`). Only
-    // `read` gains extra cases: an admin can read any profile, any signed-in
-    // user can read a *psychologist's* profile (so patients can browse the
-    // directory to choose one), and an assigned psychologist can read their
-    // own patients' profiles.
+    // entirely (see `createPsychologist` / `linkPsychologistByCode` /
+    // `adminAssignPsychologist`). Only `read` gains extra cases: an admin
+    // can read any profile, any signed-in user can read a *psychologist's*
+    // profile (so a patient can see their linked psychologist's name/photo
+    // in chat), and an assigned psychologist can read their own patients'
+    // profiles.
     match /users/{document} {
-      allow create: if request.auth.uid == document;
+      allow create: if request.auth.uid == document &&
+        request.resource.data.keys().hasOnly(selfManagedUserFields());
       allow read: if request.auth.uid == document ||
         isAdmin() ||
         resource.data.role == 'psicologo' ||
         isAssignedPsychologist(document);
-      allow write: if request.auth.uid == document;
+      // A patient may set their own `role` to 'paciente' exactly once,
+      // right after sign-up (see create_account_screen_widget.dart) --
+      // never to any other value, and never a second time. Every other
+      // update may only touch the self-managed profile fields above.
+      allow update: if request.auth.uid == document &&
+        (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(selfManagedUserFields()) ||
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']) &&
+            !resource.data.keys().hasAny(['role']) &&
+            request.resource.data.role == 'paciente'
+          )
+        );
       allow delete: if request.auth.uid == document;
     }
 
     // Conversations and their messages are only ever written by the
-    // `assignPsychologist` / `sendConversationMessage` Cloud Functions
-    // (Admin SDK, bypasses rules) — clients only ever read here, live, via
-    // `.snapshots()`. No create/update/delete rule means direct client
-    // writes are denied by default.
+    // `linkPsychologistByCode` / `adminAssignPsychologist` /
+    // `sendConversationMessage` Cloud Functions (Admin SDK, bypasses rules)
+    // — clients only ever read here, live, via `.snapshots()`. No
+    // create/update/delete rule means direct client writes are denied by
+    // default.
     match /conversations/{conversationId} {
       allow read: if request.auth != null &&
         (resource.data.patientRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
