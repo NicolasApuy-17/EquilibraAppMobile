@@ -415,9 +415,9 @@ class _LoginScreenWidgetState extends State<LoginScreenWidget> {
 
                               // Resolve the role right away (rather than
                               // relying on the async `authenticatedUserStream`)
-                              // so a psychologist lands on their own home
-                              // screen immediately, with no flash of the
-                              // patient home screen first.
+                              // so a psychologist/admin lands on their own
+                              // home screen immediately, with no flash of
+                              // the patient home screen first.
                               String? role;
                               try {
                                 final userDoc =
@@ -430,9 +430,11 @@ class _LoginScreenWidgetState extends State<LoginScreenWidget> {
                               if (!context.mounted) return;
 
                               context.goNamedAuth(
-                                role == 'psicologo'
-                                    ? PsychologistHomeWidget.routeName
-                                    : HomeScreenWidget.routeName,
+                                switch (role) {
+                                  'psicologo' => PsychologistHomeWidget.routeName,
+                                  'admin' => AdminPsychologistsWidget.routeName,
+                                  _ => HomeScreenWidget.routeName,
+                                },
                                 context.mounted,
                               );
                             },

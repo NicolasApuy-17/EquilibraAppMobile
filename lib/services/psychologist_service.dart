@@ -103,6 +103,30 @@ class PsychologistService {
     }
   }
 
+  /// Admin-only: changes [uid]'s role to [newRole] ('paciente', 'psicologo'
+  /// or 'admin'). Returns the new role, plus a `linkCode` if [uid] just
+  /// became a psychologist. Fails if [uid] is a psychologist who still has
+  /// patients assigned (reassign them first) and is leaving that role.
+  Future<Map<String, dynamic>> setUserRole({
+    required String uid,
+    required String newRole,
+  }) async {
+    try {
+      final result = await _functions.httpsCallable('setUserRole').call(<String, dynamic>{
+        'uid': uid,
+        'newRole': newRole,
+      });
+      final data = result.data;
+      return data is Map ? Map<String, dynamic>.from(data) : {};
+    } on FirebaseFunctionsException catch (e) {
+      throw PsychologistServiceException(_messageForCode(e.code, e.message));
+    } catch (_) {
+      throw const PsychologistServiceException(
+        'No pudimos conectarnos en este momento. Revisa tu conexión e inténtalo nuevamente.',
+      );
+    }
+  }
+
   /// Admin-only: activates or deactivates [uid]'s account. Disables the
   /// underlying Firebase Auth user too (not just a Firestore flag), so a
   /// deactivated account can't sign in again or keep an existing session

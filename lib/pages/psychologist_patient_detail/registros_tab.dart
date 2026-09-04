@@ -22,6 +22,47 @@ class RegistrosTab extends StatefulWidget {
 
 class _RegistrosTabState extends State<RegistrosTab> {
   DateTimeRange? _range;
+  late Future<List<RecordsRecord>> _recordsFuture;
+  late Future<List<BehavioralRecordsRecord>> _behavioralFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _recordsFuture = _loadRecords();
+    _behavioralFuture = _loadBehavioral();
+  }
+
+  // One-time fetches, not live `.snapshots()` listeners: `records` and
+  // `behavioral_records` reads are gated by `isAssignedPsychologist()`, a
+  // security rule that does a `get()` on the patient's `users/{uid}` doc --
+  // and that same doc gets written to (its `lastActivityAt`) by the
+  // `onRecordActivity`/`onBehavioralRecordActivity` Cloud Function triggers
+  // every time a record is created. A live listener whose rule depends on
+  // a document that gets rewritten moments later reliably shows the
+  // correct data for an instant, then silently drops to empty with no
+  // error -- reproduced directly with a patient's brand-new emotional
+  // record. Refreshed manually instead: on pull-to-refresh, and after
+  // editing a comment.
+  Future<List<RecordsRecord>> _loadRecords() => queryRecordsRecordOnce(
+        queryBuilder: (q) =>
+            q.where('userRef', isEqualTo: widget.patient.reference),
+      );
+
+  Future<List<BehavioralRecordsRecord>> _loadBehavioral() =>
+      queryBehavioralRecordsRecordOnce(
+        queryBuilder: (q) =>
+            q.where('userRef', isEqualTo: widget.patient.reference),
+      );
+
+  Future<void> _refresh() async {
+    final records = _loadRecords();
+    final behavioral = _loadBehavioral();
+    setState(() {
+      _recordsFuture = records;
+      _behavioralFuture = behavioral;
+    });
+    await Future.wait([records, behavioral]);
+  }
 
   Future<void> _pickRange() async {
     final now = DateTime.now();
@@ -99,6 +140,7 @@ class _RegistrosTabState extends State<RegistrosTab> {
     if (result != true || !mounted) return;
     try {
       await onSave(controller.text.trim());
+      _refresh();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -109,9 +151,9 @@ class _RegistrosTabState extends State<RegistrosTab> {
 
   @override
   Widget build(BuildContext context) {
-    final patientRef = widget.patient.reference;
-
-    return ListView(
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
       padding: const EdgeInsetsDirectional.fromSTEB(24.0, 12.0, 24.0, 24.0),
       children: [
         InkWell(
@@ -146,10 +188,8 @@ class _RegistrosTabState extends State<RegistrosTab> {
         ),
         const SizedBox(height: 16.0),
         SectionTitle('Registros emocionales'),
-        StreamBuilder<List<RecordsRecord>>(
-          stream: queryRecordsRecord(
-            queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
-          ),
+        FutureBuilder<List<RecordsRecord>>(
+          future: _recordsFuture,
           builder: (context, snapshot) => asyncSection(
             snapshot,
             errorText: 'No se pudieron cargar los registros emocionales.',
@@ -182,10 +222,8 @@ class _RegistrosTabState extends State<RegistrosTab> {
         ),
         const SizedBox(height: 24.0),
         SectionTitle('Registros de conducta'),
-        StreamBuilder<List<BehavioralRecordsRecord>>(
-          stream: queryBehavioralRecordsRecord(
-            queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
-          ),
+        FutureBuilder<List<BehavioralRecordsRecord>>(
+          future: _behavioralFuture,
           builder: (context, snapshot) => asyncSection(
             snapshot,
             errorText: 'No se pudieron cargar los registros de conducta.',
@@ -217,6 +255,7 @@ class _RegistrosTabState extends State<RegistrosTab> {
           ),
         ),
       ],
+      ),
     );
   }
 }

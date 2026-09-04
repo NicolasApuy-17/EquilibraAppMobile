@@ -12,16 +12,28 @@ import 'package:google_fonts/google_fonts.dart';
 /// 7 days show up as dashboard alerts.
 const kIntensityAlertThreshold = 8.0;
 
-/// Firestore `whereIn` accepts at most 30 values per query, so a
-/// psychologist with a larger caseload needs their patient list split into
-/// chunks before querying `records`/`behavioral_records`/`tasks` by
-/// `userRef`.
-const _kWhereInChunkSize = 30;
-
-List<List<T>> _chunk<T>(List<T> items, int size) => [
-      for (var i = 0; i < items.length; i += size)
-        items.sublist(i, i + size > items.length ? items.length : i + size),
-    ];
+/// Runs one query per patient in parallel and flattens the results. A
+/// single-value `==` query per patient, rather than one `whereIn` query
+/// across all of them -- see the comment at its call site for why. Any one
+/// patient's query failing is logged and treated as "no documents for that
+/// patient" rather than failing the whole dashboard.
+Future<List<T>> _fetchPerPatient<T>(
+  List<DocumentReference> patientRefs,
+  Future<QuerySnapshot> Function(DocumentReference ref) query,
+  T Function(DocumentSnapshot) fromSnapshot, {
+  required String context,
+}) async {
+  final results = await Future.wait(patientRefs.map((ref) async {
+    try {
+      final snap = await query(ref);
+      return snap.docs.map(fromSnapshot).toList();
+    } catch (e, stackTrace) {
+      logAppError(context: '$context (${ref.id})', error: e, stackTrace: stackTrace);
+      return <T>[];
+    }
+  }));
+  return results.expand((list) => list).toList();
+}
 
 /// One recent emotional record, kept together with the patient it belongs
 /// to so the dashboard can show "Ana · Tristeza · 8/10" without a second
@@ -140,41 +152,50 @@ class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
 
     if (patientRefs.isEmpty) return _emptyDashboard;
 
-    // One query per chunk per collection. Filtering by date/intensity/status
-    // happens in Dart below rather than in the query itself, so this never
-    // needs a composite Firestore index beyond the automatic one for a
-    // single `whereIn` filter.
-    final chunks = _chunk(patientRefs, _kWhereInChunkSize);
-    final recordSnaps = await Future.wait(chunks.map((chunk) =>
-        RecordsRecord.collection.where('userRef', whereIn: chunk).get()));
-    final behavioralSnaps = await Future.wait(chunks.map((chunk) =>
-        BehavioralRecordsRecord.collection
-            .where('userRef', whereIn: chunk)
-            .get()));
-    final taskSnaps = await Future.wait(chunks.map((chunk) =>
-        TasksRecord.collection.where('userRef', whereIn: chunk).get()));
+    // One query *per patient*, not a single `userRef whereIn patientRefs`
+    // query: Firestore security rules aren't a post-hoc filter -- a query
+    // is only allowed if Firestore can prove every document it could
+    // possibly return satisfies the rule, and it can't prove that for a
+    // multi-value `whereIn` when the rule needs a `get()` (like
+    // `isAssignedPsychologist` does here) to decide each document. A
+    // single-value `==` query it *can* prove, which is exactly what the
+    // per-patient detail tabs already do successfully. Each collection's
+    // fetch is wrapped so one patient's (or one collection's) failure
+    // doesn't blank out data that did load correctly.
+    final records = await _fetchPerPatient(
+      patientRefs,
+      (ref) => RecordsRecord.collection.where('userRef', isEqualTo: ref).get(),
+      RecordsRecord.fromSnapshot,
+      context: 'dashboard records',
+    );
+    final behavioralRecords = await _fetchPerPatient(
+      patientRefs,
+      (ref) =>
+          BehavioralRecordsRecord.collection.where('userRef', isEqualTo: ref).get(),
+      BehavioralRecordsRecord.fromSnapshot,
+      context: 'dashboard behavioral records',
+    );
+    final tasks = await _fetchPerPatient(
+      patientRefs,
+      (ref) => TasksRecord.collection.where('userRef', isEqualTo: ref).get(),
+      TasksRecord.fromSnapshot,
+      context: 'dashboard tasks',
+    );
     // `sessions` reads are rules-gated on `psychologistRef == me` alone (see
-    // firestore.rules), so a single equality filter both satisfies the rule
-    // and already scopes this to every session across all of this
-    // psychologist's patients -- no need to also filter/chunk by patientRef.
-    final sessionsSnap = await SessionsRecord.collection
-        .where('psychologistRef', isEqualTo: myRef)
-        .get();
-
-    final records = recordSnaps
-        .expand((snap) => snap.docs)
-        .map((d) => RecordsRecord.fromSnapshot(d))
-        .toList();
-    final behavioralRecords = behavioralSnaps
-        .expand((snap) => snap.docs)
-        .map((d) => BehavioralRecordsRecord.fromSnapshot(d))
-        .toList();
-    final tasks = taskSnaps
-        .expand((snap) => snap.docs)
-        .map((d) => TasksRecord.fromSnapshot(d))
-        .toList();
-    final sessions =
-        sessionsSnap.docs.map((d) => SessionsRecord.fromSnapshot(d)).toList();
+    // firestore.rules) -- a single equality filter both satisfies the rule
+    // (Firestore *can* prove it) and already scopes this to every session
+    // across all of this psychologist's patients, so no per-patient split
+    // is needed here.
+    List<SessionsRecord> sessions;
+    try {
+      final sessionsSnap = await SessionsRecord.collection
+          .where('psychologistRef', isEqualTo: myRef)
+          .get();
+      sessions = sessionsSnap.docs.map((d) => SessionsRecord.fromSnapshot(d)).toList();
+    } catch (e, stackTrace) {
+      logAppError(context: 'dashboard sessions', error: e, stackTrace: stackTrace);
+      sessions = [];
+    }
 
     final weekAgo = DateTime.now().subtract(const Duration(days: 7));
 

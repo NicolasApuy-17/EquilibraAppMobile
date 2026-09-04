@@ -706,12 +706,27 @@ class _CreateAccountScreenWidgetState extends State<CreateAccountScreenWidget> {
                               }
 
                               try {
+                                // Two separate writes, not one: the
+                                // Firestore rule that lets a brand-new user
+                                // set their own `role` only allows an update
+                                // that touches *only* `role` (see
+                                // firestore.rules, `users/{document}`). A
+                                // single update setting both `role` and
+                                // `display_name` together is rejected
+                                // outright, which silently left every new
+                                // patient without a `role` at all -- invisible
+                                // in the admin panel's user list, even though
+                                // the account itself was created fine.
+                                await UsersRecord.collection
+                                    .doc(user.uid)
+                                    .update(createUsersRecordData(
+                                      role: 'paciente',
+                                    ));
                                 await UsersRecord.collection
                                     .doc(user.uid)
                                     .update(createUsersRecordData(
                                       displayName: normalizeWhitespace(_model
                                           .nombreCompletoTextController.text),
-                                      role: 'paciente',
                                     ));
                               } catch (e) {
                                 if (!context.mounted) return;

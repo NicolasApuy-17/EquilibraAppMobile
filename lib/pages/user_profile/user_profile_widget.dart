@@ -136,6 +136,25 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
             recordsRecord.where('userRef', isEqualTo: currentUserReference),
       ),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                child: Text(
+                  'No se pudo cargar tu perfil. Desliza para reintentar o revisa tu conexión.',
+                  textAlign: TextAlign.center,
+                  style: FlutterFlowTheme.of(context).bodyMedium.override(
+                        font: GoogleFonts.outfit(),
+                        color: FlutterFlowTheme.of(context).error,
+                        letterSpacing: 0.0,
+                      ),
+                ),
+              ),
+            ),
+          );
+        }
         // Customize what your widget looks like when it's loading.
         if (!snapshot.hasData) {
           return Scaffold(
@@ -689,25 +708,6 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                       ),
                                     ),
                                   ),
-                                  if (currentUserDocument?.role == 'admin')
-                                    InkWell(
-                                      splashColor: Colors.transparent,
-                                      focusColor: Colors.transparent,
-                                      hoverColor: Colors.transparent,
-                                      highlightColor: Colors.transparent,
-                                      onTap: () => context.pushNamed(
-                                          AdminPsychologistsWidget.routeName),
-                                      child: ProfileMenuItemWidget(
-                                        icon: Icon(
-                                          Icons.admin_panel_settings_rounded,
-                                          color: FlutterFlowTheme.of(context)
-                                              .primary,
-                                          size: 22.0,
-                                        ),
-                                        title: 'Panel de administración',
-                                        subtitle: 'Gestiona psicólogos',
-                                      ),
-                                    ),
                                   Container(
                                     height: 24.0,
                                   ),

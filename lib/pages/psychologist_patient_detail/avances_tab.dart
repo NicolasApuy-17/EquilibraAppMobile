@@ -16,9 +16,66 @@ class AvancesTab extends StatefulWidget {
   State<AvancesTab> createState() => _AvancesTabState();
 }
 
+class _AvancesData {
+  const _AvancesData({
+    required this.records,
+    required this.behaviors,
+    required this.tasks,
+    required this.activities,
+  });
+
+  final List<RecordsRecord> records;
+  final List<BehavioralRecordsRecord> behaviors;
+  final List<TasksRecord> tasks;
+  final List<ActivityAssignmentsRecord> activities;
+}
+
 class _AvancesTabState extends State<AvancesTab> {
   _Period _period = _Period.thisWeek;
   DateTimeRange? _customRange;
+  late Future<_AvancesData> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  // One-time fetches, not live `.snapshots()` listeners: `records`,
+  // `behavioral_records` and `tasks` reads are gated by
+  // `isAssignedPsychologist()`, a security rule that does a `get()` on the
+  // patient's `users/{uid}` doc -- and that same doc gets written to (its
+  // `lastActivityAt`) by a Cloud Function trigger every time one of those
+  // is created. A live listener whose rule depends on a document that gets
+  // rewritten moments later reliably shows the correct data for an
+  // instant, then silently drops to empty with no error (see
+  // registros_tab.dart for how this was confirmed). Refreshed manually
+  // instead: on pull-to-refresh, and whenever the period filter changes.
+  Future<_AvancesData> _load() async {
+    final patientRef = widget.patient.reference;
+    final results = await Future.wait([
+      queryRecordsRecordOnce(
+          queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef)),
+      queryBehavioralRecordsRecordOnce(
+          queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef)),
+      queryTasksRecordOnce(
+          queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef)),
+      queryActivityAssignmentsRecordOnce(
+          queryBuilder: (q) => q.where('patientRef', isEqualTo: patientRef)),
+    ]);
+    return _AvancesData(
+      records: results[0] as List<RecordsRecord>,
+      behaviors: results[1] as List<BehavioralRecordsRecord>,
+      tasks: results[2] as List<TasksRecord>,
+      activities: results[3] as List<ActivityAssignmentsRecord>,
+    );
+  }
+
+  Future<void> _refresh() async {
+    final future = _load();
+    setState(() => _future = future);
+    await future;
+  }
 
   DateTimeRange get _range {
     final now = DateTime.now();
@@ -67,90 +124,59 @@ class _AvancesTabState extends State<AvancesTab> {
 
   @override
   Widget build(BuildContext context) {
-    final patientRef = widget.patient.reference;
-
-    return ListView(
-      padding: const EdgeInsetsDirectional.fromSTEB(24.0, 12.0, 24.0, 24.0),
-      children: [
-        Wrap(
-          spacing: 8.0,
-          runSpacing: 8.0,
-          children: [
-            _PeriodChip(
-              label: 'Esta semana',
-              selected: _period == _Period.thisWeek,
-              onTap: () => setState(() => _period = _Period.thisWeek),
-            ),
-            _PeriodChip(
-              label: 'Semana anterior',
-              selected: _period == _Period.lastWeek,
-              onTap: () => setState(() => _period = _Period.lastWeek),
-            ),
-            _PeriodChip(
-              label: 'Último mes',
-              selected: _period == _Period.lastMonth,
-              onTap: () => setState(() => _period = _Period.lastMonth),
-            ),
-            _PeriodChip(
-              label: _period == _Period.custom && _customRange != null
-                  ? '${formatDateEs(_customRange!.start)} – ${formatDateEs(_customRange!.end)}'
-                  : 'Personalizado',
-              selected: _period == _Period.custom,
-              onTap: _pickCustomRange,
-            ),
-          ],
-        ),
-        const SizedBox(height: 20.0),
-        StreamBuilder<List<RecordsRecord>>(
-          stream: queryRecordsRecord(
-            queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
-          ),
-          builder: (context, recordsSnap) => asyncSection(recordsSnap, (recordsData) {
-            final records = recordsData.where((r) => _inRange(r.timestamp)).toList();
-
-            return StreamBuilder<List<BehavioralRecordsRecord>>(
-              stream: queryBehavioralRecordsRecord(
-                queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+        padding: const EdgeInsetsDirectional.fromSTEB(24.0, 12.0, 24.0, 24.0),
+        children: [
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 8.0,
+            children: [
+              _PeriodChip(
+                label: 'Esta semana',
+                selected: _period == _Period.thisWeek,
+                onTap: () => setState(() => _period = _Period.thisWeek),
               ),
-              builder: (context, behavioralSnap) => asyncSection(behavioralSnap,
-                  (behavioralData) {
-                final behaviors =
-                    behavioralData.where((r) => _inRange(r.createdAt)).toList();
-
-                return StreamBuilder<List<TasksRecord>>(
-                  stream: queryTasksRecord(
-                    queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
-                  ),
-                  builder: (context, tasksSnap) => asyncSection(tasksSnap, (tasksData) {
-                    final tasks = tasksData
-                        .where((t) => _inRange(t.assignedDate ?? t.createdTime))
-                        .toList();
-
-                    return StreamBuilder<List<ActivityAssignmentsRecord>>(
-                      stream: queryActivityAssignmentsRecord(
-                        queryBuilder: (q) =>
-                            q.where('patientRef', isEqualTo: patientRef),
-                      ),
-                      builder: (context, activitiesSnap) =>
-                          asyncSection(activitiesSnap, (activitiesData) {
-                        final activities = activitiesData
-                            .where((a) => _inRange(a.assignedTime))
-                            .toList();
-                        return _AvancesContent(
-                          records: records,
-                          behaviors: behaviors,
-                          tasks: tasks,
-                          activities: activities,
-                        );
-                      }),
-                    );
-                  }),
-                );
-              }),
-            );
-          }),
-        ),
-      ],
+              _PeriodChip(
+                label: 'Semana anterior',
+                selected: _period == _Period.lastWeek,
+                onTap: () => setState(() => _period = _Period.lastWeek),
+              ),
+              _PeriodChip(
+                label: 'Último mes',
+                selected: _period == _Period.lastMonth,
+                onTap: () => setState(() => _period = _Period.lastMonth),
+              ),
+              _PeriodChip(
+                label: _period == _Period.custom && _customRange != null
+                    ? '${formatDateEs(_customRange!.start)} – ${formatDateEs(_customRange!.end)}'
+                    : 'Personalizado',
+                selected: _period == _Period.custom,
+                onTap: _pickCustomRange,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20.0),
+          FutureBuilder<_AvancesData>(
+            future: _future,
+            builder: (context, snapshot) => asyncSection(
+              snapshot,
+              errorText: 'No se pudo cargar el avance del consultante.',
+              (data) => _AvancesContent(
+                records: data.records.where((r) => _inRange(r.timestamp)).toList(),
+                behaviors:
+                    data.behaviors.where((r) => _inRange(r.createdAt)).toList(),
+                tasks: data.tasks
+                    .where((t) => _inRange(t.assignedDate ?? t.createdTime))
+                    .toList(),
+                activities:
+                    data.activities.where((a) => _inRange(a.assignedTime)).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

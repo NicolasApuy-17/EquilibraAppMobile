@@ -21,6 +21,35 @@ class TareasTab extends StatefulWidget {
 
 class _TareasTabState extends State<TareasTab> {
   String? _statusFilter;
+  late Future<List<TasksRecord>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  // A one-time fetch, not a live `.snapshots()` listener: `tasks` reads are
+  // gated by `isAssignedPsychologist()`, a security rule that does a
+  // `get()` on the patient's `users/{uid}` doc -- and that same doc gets
+  // written to (its `lastActivityAt`) by the `onTaskActivity` Cloud
+  // Function trigger every time a task changes. A live listener whose rule
+  // depends on a document that gets rewritten moments later is exactly the
+  // pattern that made this tab's data flash correctly for an instant, then
+  // silently drop to empty with no error -- reliably reproducible, and the
+  // same reason `records`/`behavioral_records` had it too (see
+  // registros_tab.dart, avances_tab.dart). Refreshed manually instead: on
+  // pull-to-refresh, and after any action that could have changed the data.
+  Future<List<TasksRecord>> _load() => queryTasksRecordOnce(
+        queryBuilder: (q) =>
+            q.where('userRef', isEqualTo: widget.patient.reference),
+      );
+
+  Future<void> _refresh() async {
+    final future = _load();
+    setState(() => _future = future);
+    await future;
+  }
 
   Future<void> _openAssignForm() async {
     await showModalBottomSheet(
@@ -29,6 +58,7 @@ class _TareasTabState extends State<TareasTab> {
       backgroundColor: Colors.transparent,
       builder: (context) => _AssignTaskSheet(patient: widget.patient),
     );
+    _refresh();
   }
 
   Future<void> _openTaskDetail(TasksRecord task) async {
@@ -38,16 +68,13 @@ class _TareasTabState extends State<TareasTab> {
       backgroundColor: Colors.transparent,
       builder: (context) => _TaskDetailSheet(task: task),
     );
+    _refresh();
   }
 
   @override
   Widget build(BuildContext context) {
-    final patientRef = widget.patient.reference;
-
-    return StreamBuilder<List<TasksRecord>>(
-      stream: queryTasksRecord(
-        queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
-      ),
+    return FutureBuilder<List<TasksRecord>>(
+      future: _future,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return const Padding(
@@ -70,28 +97,31 @@ class _TareasTabState extends State<TareasTab> {
 
         return Stack(
           children: [
-            ListView(
-              padding: const EdgeInsetsDirectional.fromSTEB(
-                  24.0, 12.0, 24.0, 96.0),
-              children: [
-                ChoiceChipRow(
-                  options: ['todas', ...kTaskStatuses],
-                  labelBuilder: (o) =>
-                      o == 'todas' ? 'Todas' : taskStatusLabel(o),
-                  selected: _statusFilter ?? 'todas',
-                  onSelected: (o) => setState(
-                      () => _statusFilter = o == 'todas' ? null : o),
-                ),
-                const SizedBox(height: 16.0),
-                if (tasks.isEmpty)
-                  const EmptyHint('No hay tareas con este filtro.',
-                      icon: Icons.assignment_outlined)
-                else
-                  ...tasks.map((task) => _TaskRow(
-                        task: task,
-                        onTap: () => _openTaskDetail(task),
-                      )),
-              ],
+            RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                    24.0, 12.0, 24.0, 96.0),
+                children: [
+                  ChoiceChipRow(
+                    options: ['todas', ...kTaskStatuses],
+                    labelBuilder: (o) =>
+                        o == 'todas' ? 'Todas' : taskStatusLabel(o),
+                    selected: _statusFilter ?? 'todas',
+                    onSelected: (o) => setState(
+                        () => _statusFilter = o == 'todas' ? null : o),
+                  ),
+                  const SizedBox(height: 16.0),
+                  if (tasks.isEmpty)
+                    const EmptyHint('No hay tareas con este filtro.',
+                        icon: Icons.assignment_outlined)
+                  else
+                    ...tasks.map((task) => _TaskRow(
+                          task: task,
+                          onTap: () => _openTaskDetail(task),
+                        )),
+                ],
+              ),
             ),
             PositionedDirectional(
               bottom: 16.0,

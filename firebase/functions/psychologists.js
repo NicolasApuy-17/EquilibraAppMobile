@@ -275,6 +275,52 @@ exports.adminDiagnosePatientLink = onCall({ cors: true }, async (request) => {
     role: patientData.role ?? null,
     storedPsychologistRefPath: storedRef ? storedRef.path : null,
   };
+
+  // Ground truth via the Admin SDK, which bypasses firestore.rules entirely
+  // -- these counts are what actually exists for this patient, regardless
+  // of whether the psychologist's app can currently read them or whether a
+  // psychologist is even linked yet. Comparing this against what the app
+  // shows tells us whether a reported "no records" complaint is a real
+  // data gap or a rules/query bug.
+  const patientRef = patientSnap.ref;
+  const [recordsSnap, behavioralSnap, tasksSnap, activitiesSnap] =
+    await Promise.all([
+      db.collection("records").where("userRef", "==", patientRef).get(),
+      db.collection("behavioral_records").where("userRef", "==", patientRef).get(),
+      db.collection("tasks").where("userRef", "==", patientRef).get(),
+      db.collection("activity_assignments").where("patientRef", "==", patientRef).get(),
+    ]);
+  result.recordsCount = recordsSnap.size;
+  result.behavioralRecordsCount = behavioralSnap.size;
+  result.tasksCount = tasksSnap.size;
+  result.activityAssignmentsCount = activitiesSnap.size;
+
+  // Raw field dump of each record, with its stored type made explicit --
+  // this is what actually decides whether the Flutter client's own parser
+  // can read the document back out. A `userRef` stored as a plain string
+  // instead of a real Firestore reference (or a `timestamp` that isn't a
+  // Timestamp) would match this Admin SDK query fine, yet make the client
+  // throw while parsing that one document and silently drop it from the
+  // list -- no error shown, indistinguishable from "no records".
+  const describeValue = (v) => {
+    if (v === null || v === undefined) return "null";
+    if (v instanceof admin.firestore.Timestamp) {
+      return `Timestamp(${v.toDate().toISOString()})`;
+    }
+    if (v instanceof admin.firestore.DocumentReference) return `Ref(${v.path})`;
+    if (Array.isArray(v)) return `Array(${v.length})`;
+    return `${typeof v}:${JSON.stringify(v)}`;
+  };
+  const describeDoc = (doc) => {
+    const out = { id: doc.id };
+    for (const [key, value] of Object.entries(doc.data())) {
+      out[key] = describeValue(value);
+    }
+    return out;
+  };
+  result.recordsRaw = recordsSnap.docs.map(describeDoc);
+  result.behavioralRecordsRaw = behavioralSnap.docs.map(describeDoc);
+
   if (!storedRef) return result;
 
   const withStoredRef = await db.collection("users")
@@ -325,6 +371,95 @@ exports.setAccountActive = onCall({ cors: true }, async (request) => {
   await admin.firestore().collection("users").doc(uid).set({ active }, { merge: true });
 
   return { active };
+});
+
+/**
+ * Admin-only: changes a user's role between 'paciente' and 'psicologo' --
+ * this is what actually determines which screens/permissions a user has in
+ * this app (see firestore.rules), so "change role" and "grant a specific
+ * set of options" are the same action here. Deliberately never touches
+ * 'admin': promoting/demoting an admin is out of scope and too sensitive
+ * for a same-panel action.
+ *
+ * Turning a patient into a psychologist generates them a link code (same
+ * as `createPsychologist`) and drops their own `psychologistRef`, since a
+ * psychologist doesn't have one. Turning a psychologist back into a
+ * patient is refused while they still have patients assigned, so nobody
+ * gets silently orphaned -- the admin must reassign those first.
+ */
+exports.setUserRole = onCall({ cors: true }, async (request) => {
+  assertAuthenticated(request);
+  await assertIsAdmin(request.auth.uid);
+
+  const uid = `${request.data?.uid ?? ""}`.trim();
+  const newRole = `${request.data?.newRole ?? ""}`.trim();
+  if (!uid || !["paciente", "psicologo", "admin"].includes(newRole)) {
+    throw new HttpsError("invalid-argument", "Rol inválido.");
+  }
+  if (uid === request.auth.uid) {
+    throw new HttpsError("invalid-argument", "No puedes cambiar tu propio rol.");
+  }
+
+  const firestore = admin.firestore();
+  const userRef = firestore.collection("users").doc(uid);
+  const snap = await userRef.get();
+  if (!snap.exists) {
+    throw new HttpsError("not-found", "Ese usuario no existe.");
+  }
+  const data = snap.data();
+  if (data.role === newRole) {
+    return { role: newRole };
+  }
+
+  // Leaving the psicologo role behind (to paciente or admin) orphans any
+  // patient still pointing at this account -- must be reassigned first,
+  // regardless of which role they're moving to.
+  if (data.role === "psicologo" && newRole !== "psicologo") {
+    const stillAssigned = await firestore
+      .collection("users")
+      .where("role", "==", "paciente")
+      .where("psychologistRef", "==", userRef)
+      .limit(1)
+      .get();
+    if (!stillAssigned.empty) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Este psicólogo todavía tiene consultantes asignados. Reasígnalos antes de cambiar su rol."
+      );
+    }
+  }
+
+  if (newRole === "psicologo") {
+    const linkCode = await generateUniqueLinkCode(data.display_name || "");
+    await userRef.update({
+      role: "psicologo",
+      linkCode,
+      specialty: data.specialty || "",
+      psychologistRef: admin.firestore.FieldValue.delete(),
+      psychologistLinkedAt: admin.firestore.FieldValue.delete(),
+    });
+    return { role: "psicologo", linkCode };
+  }
+
+  if (newRole === "admin") {
+    await userRef.update({
+      role: "admin",
+      linkCode: admin.firestore.FieldValue.delete(),
+      specialty: admin.firestore.FieldValue.delete(),
+      psychologistRef: admin.firestore.FieldValue.delete(),
+      psychologistLinkedAt: admin.firestore.FieldValue.delete(),
+    });
+    return { role: "admin" };
+  }
+
+  await userRef.update({
+    role: "paciente",
+    linkCode: admin.firestore.FieldValue.delete(),
+    specialty: admin.firestore.FieldValue.delete(),
+    psychologistRef: admin.firestore.FieldValue.delete(),
+    psychologistLinkedAt: admin.firestore.FieldValue.delete(),
+  });
+  return { role: "paciente" };
 });
 
 exports.sendConversationMessage = onCall({ cors: true }, async (request) => {

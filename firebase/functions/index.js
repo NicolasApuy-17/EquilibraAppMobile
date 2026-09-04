@@ -17,6 +17,7 @@ const {
   adminAssignPsychologist,
   adminDiagnosePatientLink,
   setAccountActive,
+  setUserRole,
   sendConversationMessage,
   onRecordActivity,
   onBehavioralRecordActivity,
@@ -27,6 +28,7 @@ exports.linkPsychologistByCode = linkPsychologistByCode;
 exports.adminAssignPsychologist = adminAssignPsychologist;
 exports.adminDiagnosePatientLink = adminDiagnosePatientLink;
 exports.setAccountActive = setAccountActive;
+exports.setUserRole = setUserRole;
 exports.sendConversationMessage = sendConversationMessage;
 exports.onRecordActivity = onRecordActivity;
 exports.onBehavioralRecordActivity = onBehavioralRecordActivity;

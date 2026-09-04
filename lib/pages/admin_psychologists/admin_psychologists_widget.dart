@@ -1,8 +1,8 @@
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
-import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
+import '/index.dart';
 import '/services/psychologist_service.dart';
 import '/utils/validators.dart';
 import 'package:flutter/material.dart';
@@ -12,13 +12,17 @@ import 'activities_tab.dart';
 import 'stats_tab.dart';
 import 'incidents_tab.dart';
 
-/// Admin-only screen: "Psicólogos" (create new ones, see their link code
-/// and how many consultantes each has), "Consultantes" (every patient in
-/// the app, search by name, and reassign their psychologist), and
-/// "Actividades" (the catalog of tools/activities psychologists can
-/// assign). Access is enforced server-side (Firestore rules + the Cloud
-/// Functions both require `role == 'admin'`); the `role` check here is
-/// only a friendlier UI guard on top of that.
+/// The admin's own home screen (an admin lands here directly on sign-in,
+/// same as a psychologist lands on `PsychologistHomeWidget` -- see the role
+/// redirects in login_screen_widget.dart / home_screen_widget.dart). Tabs,
+/// in priority order: "Dashboard" (usage stats), "Usuarios" (every patient
+/// and psychologist, search, change role, activate/deactivate, reassign a
+/// patient's psychologist), "Psicólogos" (create new ones, see their link
+/// code), "Actividades" (the catalog of tools/activities psychologists can
+/// assign), and "Incidencias" (logged app errors). Access is enforced
+/// server-side (Firestore rules + the Cloud Functions both require
+/// `role == 'admin'`); the `role` check here is only a friendlier UI guard
+/// on top of that.
 class AdminPsychologistsWidget extends StatefulWidget {
   const AdminPsychologistsWidget({super.key});
 
@@ -64,13 +68,41 @@ class _AdminPsychologistsWidgetState extends State<AdminPsychologistsWidget>
     }
   }
 
+  Future<void> _confirmSignOut() async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Cerrar sesión'),
+            content: const Text('¿Deseas salir de tu cuenta?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Cerrar sesión'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !mounted) return;
+
+    GoRouter.of(context).prepareAuthEvent();
+    await authManager.signOut();
+    if (!context.mounted) return;
+    GoRouter.of(context).clearRedirectLocation();
+    context.goNamedAuth(TestScreenWidget.routeName, context.mounted);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin = currentUserDocument?.role == 'admin';
 
     return Scaffold(
       backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-      floatingActionButton: isAdmin && _tabController.index == 0
+      floatingActionButton: isAdmin && _tabController.index == 2
           ? FloatingActionButton(
               backgroundColor: FlutterFlowTheme.of(context).primary,
               foregroundColor: FlutterFlowTheme.of(context).onPrimary,
@@ -82,26 +114,16 @@ class _AdminPsychologistsWidgetState extends State<AdminPsychologistsWidget>
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  FlutterFlowIconButton(
-                    borderRadius: 8.0,
-                    buttonSize: 40.0,
-                    fillColor: Colors.transparent,
-                    icon: Icon(
-                      Icons.arrow_back_rounded,
-                      color: FlutterFlowTheme.of(context).primaryText,
-                      size: 24.0,
-                    ),
-                    onPressed: () => context.safePop(),
-                  ),
                   Expanded(
                     child: Text(
-                      'Panel de administración',
-                      textAlign: TextAlign.center,
+                      currentUserDisplayName.isEmpty
+                          ? 'Panel de administración'
+                          : 'Hola, ${currentUserDisplayName.split(' ').first}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: FlutterFlowTheme.of(context).titleLarge.override(
@@ -113,7 +135,13 @@ class _AdminPsychologistsWidgetState extends State<AdminPsychologistsWidget>
                           ),
                     ),
                   ),
-                  const SizedBox(width: 40.0),
+                  IconButton(
+                    onPressed: _confirmSignOut,
+                    icon: Icon(
+                      Icons.logout_rounded,
+                      color: FlutterFlowTheme.of(context).primaryText,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -137,6 +165,8 @@ class _AdminPsychologistsWidgetState extends State<AdminPsychologistsWidget>
             else ...[
               TabBar(
                 controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
                 labelColor: FlutterFlowTheme.of(context).primary,
                 unselectedLabelColor: FlutterFlowTheme.of(context).secondaryText,
                 indicatorColor: FlutterFlowTheme.of(context).primary,
@@ -144,11 +174,11 @@ class _AdminPsychologistsWidgetState extends State<AdminPsychologistsWidget>
                     .bodyMedium
                     .override(font: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
                 tabs: const [
-                  Tab(text: 'Psicólogos'),
-                  Tab(text: 'Consultantes'),
-                  Tab(text: 'Actividades'),
-                  Tab(text: 'Estadísticas'),
-                  Tab(text: 'Incidencias'),
+                  Tab(icon: Icon(Icons.dashboard_rounded), text: 'Dashboard'),
+                  Tab(icon: Icon(Icons.people_alt_rounded), text: 'Usuarios'),
+                  Tab(icon: Icon(Icons.psychology_rounded), text: 'Psicólogos'),
+                  Tab(icon: Icon(Icons.self_improvement_rounded), text: 'Actividades'),
+                  Tab(icon: Icon(Icons.report_problem_rounded), text: 'Incidencias'),
                 ],
               ),
               Expanded(
@@ -179,10 +209,10 @@ class _AdminPsychologistsWidgetState extends State<AdminPsychologistsWidget>
                     return TabBarView(
                       controller: _tabController,
                       children: [
-                        _PsychologistsTab(psychologists: psychologists),
-                        _PatientsTab(psychologists: psychologists),
-                        const AdminActivitiesTab(),
                         const AdminStatsTab(),
+                        _UsersTab(psychologists: psychologists),
+                        _PsychologistsTab(psychologists: psychologists),
+                        const AdminActivitiesTab(),
                         const AdminIncidentsTab(),
                       ],
                     );
@@ -451,23 +481,117 @@ class _ActiveToggleButtonState extends State<_ActiveToggleButton> {
   }
 }
 
-class _PatientsTab extends StatefulWidget {
-  const _PatientsTab({required this.psychologists});
+/// "Usuarios": every patient and psychologist in one place, so an admin can
+/// search, activate/deactivate, reassign a patient's psychologist, and --
+/// the whole point of this tab -- change someone's role without ever
+/// opening the Firebase console. ("Psicólogos" stays a separate tab for the
+/// specialized create-account/link-code flow.)
+class _UsersTab extends StatefulWidget {
+  const _UsersTab({required this.psychologists});
 
   final List<UsersRecord> psychologists;
 
   @override
-  State<_PatientsTab> createState() => _PatientsTabState();
+  State<_UsersTab> createState() => _UsersTabState();
 }
 
-class _PatientsTabState extends State<_PatientsTab> {
+class _UsersTabState extends State<_UsersTab> {
   final _searchController = TextEditingController();
   String _query = '';
+  String _roleFilter = 'todos';
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  static const _kRoleLabels = {
+    'paciente': 'Paciente',
+    'psicologo': 'Psicólogo',
+    'admin': 'Administrador',
+  };
+
+  Future<void> _changeRole(UsersRecord user) async {
+    final name = user.displayName.isEmpty ? user.email : user.displayName;
+    final otherRoles =
+        _kRoleLabels.keys.where((role) => role != user.role).toList();
+
+    final targetRole = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 8.0),
+              child: Text(
+                'Cambiar rol de $name',
+                style: FlutterFlowTheme.of(context).titleMedium.override(
+                      font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                      color: FlutterFlowTheme.of(context).primaryText,
+                      letterSpacing: 0.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ),
+            for (final role in otherRoles)
+              ListTile(
+                title: Text(_kRoleLabels[role]!),
+                onTap: () => Navigator.pop(sheetContext, role),
+              ),
+            const SizedBox(height: 8.0),
+          ],
+        ),
+      ),
+    );
+    if (targetRole == null || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Confirmar cambio de rol'),
+            content: Text(switch (targetRole) {
+              'psicologo' =>
+                '¿Convertir a $name en psicólogo? Se le generará un código de vinculación y dejará de estar vinculado a su psicólogo actual, si tenía uno.',
+              'admin' =>
+                '¿Convertir a $name en administrador? Tendrá acceso completo al panel de administración.',
+              _ =>
+                '¿Convertir a $name en paciente? Esto solo funciona si ya no tiene consultantes asignados.',
+            }),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Cambiar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !mounted) return;
+
+    try {
+      final result = await PsychologistService()
+          .setUserRole(uid: user.reference.id, newRole: targetRole);
+      if (!mounted) return;
+      final linkCode = result['linkCode'] as String?;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(linkCode == null
+              ? 'Rol actualizado.'
+              : 'Rol actualizado. Código de vinculación: $linkCode'),
+          duration: const Duration(milliseconds: 6000),
+        ),
+      );
+    } on PsychologistServiceException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
   }
 
   Future<void> _diagnose(UsersRecord patient) async {
@@ -548,7 +672,7 @@ class _PatientsTabState extends State<_PatientsTab> {
             onChanged: (value) =>
                 setState(() => _query = value.trim().toLowerCase()),
             decoration: InputDecoration(
-              hintText: 'Buscar consultante por nombre o correo...',
+              hintText: 'Buscar por nombre o correo...',
               prefixIcon: const Icon(Icons.search_rounded),
               filled: true,
               fillColor: FlutterFlowTheme.of(context).secondaryBackground,
@@ -559,17 +683,43 @@ class _PatientsTabState extends State<_PatientsTab> {
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(24.0, 8.0, 24.0, 4.0),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Wrap(
+              spacing: 8.0,
+              children: [
+                for (final option in const {
+                  'todos': 'Todos',
+                  'paciente': 'Pacientes',
+                  'psicologo': 'Psicólogos',
+                  'admin': 'Administradores',
+                  'sin_rol': 'Sin rol',
+                }.entries)
+                  _RoleFilterChip(
+                    label: option.value,
+                    selected: _roleFilter == option.key,
+                    onTap: () => setState(() => _roleFilter = option.key),
+                  ),
+              ],
+            ),
+          ),
+        ),
         Expanded(
           child: StreamBuilder<List<UsersRecord>>(
-            stream: queryUsersRecord(
-              queryBuilder: (usersRecord) =>
-                  usersRecord.where('role', isEqualTo: 'paciente'),
-            ),
+            // No role filter in the query itself -- fetched via `isAdmin()`
+            // alone, which covers every document regardless of its `role`
+            // (or lack of one). Filtering happens client-side below instead,
+            // specifically so an account stuck without a `role` (e.g. a
+            // sign-up whose role-assignment write failed) still shows up
+            // here under "Sin rol" instead of silently disappearing.
+            stream: queryUsersRecord(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Center(
                   child: Text(
-                    'No se pudieron cargar los consultantes.',
+                    'No se pudieron cargar los usuarios.',
                     style: FlutterFlowTheme.of(context).bodyMedium.override(
                           font: GoogleFonts.outfit(),
                           color: FlutterFlowTheme.of(context).error,
@@ -581,15 +731,25 @@ class _PatientsTabState extends State<_PatientsTab> {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final patients = snapshot.data!.where((patient) {
+              final users = snapshot.data!.where((user) {
+                final hasKnownRole = _kRoleLabels.containsKey(user.role);
+                if (_roleFilter == 'sin_rol') {
+                  if (hasKnownRole) return false;
+                } else if (_roleFilter != 'todos' && user.role != _roleFilter) {
+                  return false;
+                }
                 if (_query.isEmpty) return true;
-                return patient.displayName.toLowerCase().contains(_query) ||
-                    patient.email.toLowerCase().contains(_query);
-              }).toList();
-              if (patients.isEmpty) {
+                return user.displayName.toLowerCase().contains(_query) ||
+                    user.email.toLowerCase().contains(_query);
+              }).toList()
+                ..sort((a, b) => (a.displayName.isEmpty ? a.email : a.displayName)
+                    .toLowerCase()
+                    .compareTo(
+                        (b.displayName.isEmpty ? b.email : b.displayName).toLowerCase()));
+              if (users.isEmpty) {
                 return Center(
                   child: Text(
-                    'No se encontraron consultantes.',
+                    'No se encontraron usuarios.',
                     style: FlutterFlowTheme.of(context).bodyMedium.override(
                           font: GoogleFonts.outfit(),
                           color: FlutterFlowTheme.of(context).secondaryText,
@@ -600,13 +760,15 @@ class _PatientsTabState extends State<_PatientsTab> {
               }
               return ListView.builder(
                 padding:
-                    const EdgeInsetsDirectional.fromSTEB(24.0, 0.0, 24.0, 96.0),
-                itemCount: patients.length,
+                    const EdgeInsetsDirectional.fromSTEB(24.0, 8.0, 24.0, 96.0),
+                itemCount: users.length,
                 itemBuilder: (context, index) {
-                  final patient = patients[index];
-                  final psychologistName = patient.psychologistRef == null
-                      ? 'Sin asignar'
-                      : psychologistNames[patient.psychologistRef!.id] ??
+                  final user = users[index];
+                  final isPatient = user.role == 'paciente';
+                  final isSelf = user.reference.id == currentUserUid;
+                  final psychologistName = !isPatient || user.psychologistRef == null
+                      ? null
+                      : psychologistNames[user.psychologistRef!.id] ??
                           'Psicólogo no encontrado';
                   return Padding(
                     padding:
@@ -618,16 +780,16 @@ class _PatientsTabState extends State<_PatientsTab> {
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    patient.displayName.isEmpty
-                                        ? patient.email
-                                        : patient.displayName,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    user.displayName.isEmpty
+                                        ? user.email
+                                        : user.displayName,
                                     style: FlutterFlowTheme.of(context)
                                         .titleSmall
                                         .override(
@@ -639,38 +801,49 @@ class _PatientsTabState extends State<_PatientsTab> {
                                           fontWeight: FontWeight.bold,
                                         ),
                                   ),
-                                  Padding(
-                                    padding: const EdgeInsetsDirectional.fromSTEB(
-                                        0.0, 4.0, 0.0, 0.0),
-                                    child: Text(
-                                      'Psicólogo: $psychologistName',
-                                      style: FlutterFlowTheme.of(context)
-                                          .bodySmall
-                                          .override(
-                                            font: GoogleFonts.outfit(),
-                                            color: FlutterFlowTheme.of(context)
-                                                .secondaryText,
-                                            letterSpacing: 0.0,
-                                          ),
+                                ),
+                                _RoleBadge(role: user.role),
+                                const SizedBox(width: 8.0),
+                                _ActiveToggleButton(user: user),
+                              ],
+                            ),
+                            if (psychologistName != null)
+                              Padding(
+                                padding: const EdgeInsetsDirectional.fromSTEB(
+                                    0.0, 4.0, 0.0, 0.0),
+                                child: Text(
+                                  'Psicólogo: $psychologistName',
+                                  style: FlutterFlowTheme.of(context)
+                                      .bodySmall
+                                      .override(
+                                        font: GoogleFonts.outfit(),
+                                        color: FlutterFlowTheme.of(context)
+                                            .secondaryText,
+                                        letterSpacing: 0.0,
+                                      ),
+                                ),
+                              ),
+                            Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: Wrap(
+                                children: [
+                                  if (!isSelf)
+                                    TextButton(
+                                      onPressed: () => _changeRole(user),
+                                      child: const Text('Cambiar rol'),
                                     ),
-                                  ),
+                                  if (isPatient) ...[
+                                    TextButton(
+                                      onPressed: () => _reassign(user),
+                                      child: const Text('Reasignar'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _diagnose(user),
+                                      child: const Text('Diagnóstico'),
+                                    ),
+                                  ],
                                 ],
                               ),
-                            ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                _ActiveToggleButton(user: patient),
-                                TextButton(
-                                  onPressed: () => _reassign(patient),
-                                  child: const Text('Reasignar'),
-                                ),
-                                TextButton(
-                                  onPressed: () => _diagnose(patient),
-                                  child: const Text('Diagnóstico'),
-                                ),
-                              ],
                             ),
                           ],
                         ),
@@ -683,6 +856,75 @@ class _PatientsTabState extends State<_PatientsTab> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _RoleFilterChip extends StatelessWidget {
+  const _RoleFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FlutterFlowTheme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20.0),
+      child: Container(
+        padding: const EdgeInsetsDirectional.fromSTEB(14.0, 6.0, 14.0, 6.0),
+        decoration: BoxDecoration(
+          color: selected ? theme.primary10 : theme.secondaryBackground,
+          borderRadius: BorderRadius.circular(20.0),
+          border: Border.all(color: selected ? theme.primary : theme.alternate),
+        ),
+        child: Text(
+          label,
+          style: theme.labelMedium.override(
+            font: GoogleFonts.outfit(),
+            color: selected ? theme.primary : theme.primaryText,
+            letterSpacing: 0.0,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleBadge extends StatelessWidget {
+  const _RoleBadge({required this.role});
+  final String role;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FlutterFlowTheme.of(context);
+    final (label, color) = switch (role) {
+      'paciente' => ('Paciente', theme.info),
+      'psicologo' => ('Psicólogo', theme.primary),
+      'admin' => ('Administrador', theme.warning),
+      _ => ('Sin rol', theme.error),
+    };
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(8.0, 3.0, 8.0, 3.0),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10.0),
+      ),
+      child: Text(
+        label,
+        style: theme.labelSmall.override(
+          font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          color: color,
+          letterSpacing: 0.0,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

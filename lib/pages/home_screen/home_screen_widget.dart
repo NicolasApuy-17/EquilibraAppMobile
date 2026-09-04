@@ -31,9 +31,9 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Safety net for a psychologist reopening the app while already signed
-  // in: the root '/' route can't wait for the async role lookup before
-  // deciding between HomeScreenWidget and PsychologistHomeWidget (see
+  // Safety net for a psychologist/admin reopening the app while already
+  // signed in: the root '/' route can't wait for the async role lookup
+  // before deciding between HomeScreenWidget and their own home screen (see
   // nav.dart), so it always lands here first. The normal, flash-free path
   // is login_screen_widget.dart resolving the role right after sign-in.
   StreamSubscription<UsersRecord?>? _roleRedirectSub;
@@ -43,9 +43,15 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
     super.initState();
     _model = createModel(context, () => HomeScreenModel());
     _roleRedirectSub = authenticatedUserStream.listen((doc) {
-      if (doc?.role != 'psicologo' || !mounted) return;
+      if (!mounted) return;
+      final routeName = switch (doc?.role) {
+        'psicologo' => PsychologistHomeWidget.routeName,
+        'admin' => AdminPsychologistsWidget.routeName,
+        _ => null,
+      };
+      if (routeName == null) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.goNamed(PsychologistHomeWidget.routeName);
+        if (mounted) context.goNamed(routeName);
       });
     });
   }
