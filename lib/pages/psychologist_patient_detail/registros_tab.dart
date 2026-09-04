@@ -150,33 +150,35 @@ class _RegistrosTabState extends State<RegistrosTab> {
           stream: queryRecordsRecord(
             queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
           ),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) return const LoadingRow();
-            final records = snapshot.data!
-                .where((r) => _inRange(r.timestamp))
-                .toList()
-              ..sort((a, b) => (b.timestamp ?? DateTime(2000))
-                  .compareTo(a.timestamp ?? DateTime(2000)));
-            if (records.isEmpty) {
-              return const EmptyHint('Sin registros emocionales en este rango.');
-            }
-            return Column(
-              children: records
-                  .map((record) => _EmotionalRecordCard(
-                        record: record,
-                        onEditComment: () => _editComment(
-                          currentComment: record.psychologistComment,
-                          onSave: (comment) => record.reference.update(
-                            createRecordsRecordData(
-                              psychologistComment: comment,
-                              psychologistCommentTime: DateTime.now(),
+          builder: (context, snapshot) => asyncSection(
+            snapshot,
+            errorText: 'No se pudieron cargar los registros emocionales.',
+            (data) {
+              final records = data.where((r) => _inRange(r.timestamp)).toList()
+                ..sort((a, b) => (b.timestamp ?? DateTime(2000))
+                    .compareTo(a.timestamp ?? DateTime(2000)));
+              if (records.isEmpty) {
+                return const EmptyHint('Sin registros emocionales en este rango.',
+                    icon: Icons.mood_outlined);
+              }
+              return Column(
+                children: records
+                    .map((record) => _EmotionalRecordCard(
+                          record: record,
+                          onEditComment: () => _editComment(
+                            currentComment: record.psychologistComment,
+                            onSave: (comment) => record.reference.update(
+                              createRecordsRecordData(
+                                psychologistComment: comment,
+                                psychologistCommentTime: DateTime.now(),
+                              ),
                             ),
                           ),
-                        ),
-                      ))
-                  .toList(),
-            );
-          },
+                        ))
+                    .toList(),
+              );
+            },
+          ),
         ),
         const SizedBox(height: 24.0),
         SectionTitle('Registros de conducta'),
@@ -184,33 +186,35 @@ class _RegistrosTabState extends State<RegistrosTab> {
           stream: queryBehavioralRecordsRecord(
             queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
           ),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) return const LoadingRow();
-            final records = snapshot.data!
-                .where((r) => _inRange(r.createdAt))
-                .toList()
-              ..sort((a, b) => (b.createdAt ?? DateTime(2000))
-                  .compareTo(a.createdAt ?? DateTime(2000)));
-            if (records.isEmpty) {
-              return const EmptyHint('Sin registros de conducta en este rango.');
-            }
-            return Column(
-              children: records
-                  .map((record) => _BehavioralRecordCard(
-                        record: record,
-                        onEditComment: () => _editComment(
-                          currentComment: record.psychologistComment,
-                          onSave: (comment) => record.reference.update(
-                            createBehavioralRecordsRecordData(
-                              psychologistComment: comment,
-                              psychologistCommentTime: DateTime.now(),
+          builder: (context, snapshot) => asyncSection(
+            snapshot,
+            errorText: 'No se pudieron cargar los registros de conducta.',
+            (data) {
+              final records = data.where((r) => _inRange(r.createdAt)).toList()
+                ..sort((a, b) => (b.createdAt ?? DateTime(2000))
+                    .compareTo(a.createdAt ?? DateTime(2000)));
+              if (records.isEmpty) {
+                return const EmptyHint('Sin registros de conducta en este rango.',
+                    icon: Icons.checklist_outlined);
+              }
+              return Column(
+                children: records
+                    .map((record) => _BehavioralRecordCard(
+                          record: record,
+                          onEditComment: () => _editComment(
+                            currentComment: record.psychologistComment,
+                            onSave: (comment) => record.reference.update(
+                              createBehavioralRecordsRecordData(
+                                psychologistComment: comment,
+                                psychologistCommentTime: DateTime.now(),
+                              ),
                             ),
                           ),
-                        ),
-                      ))
-                  .toList(),
-            );
-          },
+                        ))
+                    .toList(),
+              );
+            },
+          ),
         ),
       ],
     );

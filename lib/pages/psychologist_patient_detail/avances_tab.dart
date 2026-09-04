@@ -105,30 +105,25 @@ class _AvancesTabState extends State<AvancesTab> {
           stream: queryRecordsRecord(
             queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
           ),
-          builder: (context, recordsSnap) {
-            if (!recordsSnap.hasData) return const LoadingRow();
-            final records =
-                recordsSnap.data!.where((r) => _inRange(r.timestamp)).toList();
+          builder: (context, recordsSnap) => asyncSection(recordsSnap, (recordsData) {
+            final records = recordsData.where((r) => _inRange(r.timestamp)).toList();
 
             return StreamBuilder<List<BehavioralRecordsRecord>>(
               stream: queryBehavioralRecordsRecord(
                 queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
               ),
-              builder: (context, behavioralSnap) {
-                if (!behavioralSnap.hasData) return const LoadingRow();
-                final behaviors = behavioralSnap.data!
-                    .where((r) => _inRange(r.createdAt))
-                    .toList();
+              builder: (context, behavioralSnap) => asyncSection(behavioralSnap,
+                  (behavioralData) {
+                final behaviors =
+                    behavioralData.where((r) => _inRange(r.createdAt)).toList();
 
                 return StreamBuilder<List<TasksRecord>>(
                   stream: queryTasksRecord(
                     queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
                   ),
-                  builder: (context, tasksSnap) {
-                    if (!tasksSnap.hasData) return const LoadingRow();
-                    final tasks = tasksSnap.data!
-                        .where((t) =>
-                            _inRange(t.assignedDate ?? t.createdTime))
+                  builder: (context, tasksSnap) => asyncSection(tasksSnap, (tasksData) {
+                    final tasks = tasksData
+                        .where((t) => _inRange(t.assignedDate ?? t.createdTime))
                         .toList();
 
                     return StreamBuilder<List<ActivityAssignmentsRecord>>(
@@ -136,8 +131,9 @@ class _AvancesTabState extends State<AvancesTab> {
                         queryBuilder: (q) =>
                             q.where('patientRef', isEqualTo: patientRef),
                       ),
-                      builder: (context, activitiesSnap) {
-                        final activities = (activitiesSnap.data ?? [])
+                      builder: (context, activitiesSnap) =>
+                          asyncSection(activitiesSnap, (activitiesData) {
+                        final activities = activitiesData
                             .where((a) => _inRange(a.assignedTime))
                             .toList();
                         return _AvancesContent(
@@ -146,13 +142,13 @@ class _AvancesTabState extends State<AvancesTab> {
                           tasks: tasks,
                           activities: activities,
                         );
-                      },
+                      }),
                     );
-                  },
+                  }),
                 );
-              },
+              }),
             );
-          },
+          }),
         ),
       ],
     );

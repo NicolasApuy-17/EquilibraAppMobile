@@ -49,6 +49,12 @@ class _TareasTabState extends State<TareasTab> {
         queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef),
       ),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Padding(
+            padding: EdgeInsets.all(24.0),
+            child: AsyncErrorHint(text: 'No se pudieron cargar las tareas.'),
+          );
+        }
         if (!snapshot.hasData) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 32.0),
@@ -78,7 +84,8 @@ class _TareasTabState extends State<TareasTab> {
                 ),
                 const SizedBox(height: 16.0),
                 if (tasks.isEmpty)
-                  const EmptyHint('No hay tareas con este filtro.')
+                  const EmptyHint('No hay tareas con este filtro.',
+                      icon: Icons.assignment_outlined)
                 else
                   ...tasks.map((task) => _TaskRow(
                         task: task,

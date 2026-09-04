@@ -50,6 +50,12 @@ class _SesionesTabState extends State<SesionesTab> {
             .where('psychologistRef', isEqualTo: myRef),
       ),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Padding(
+            padding: EdgeInsets.all(24.0),
+            child: AsyncErrorHint(text: 'No se pudieron cargar las sesiones.'),
+          );
+        }
         if (!snapshot.hasData) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 32.0),
@@ -73,7 +79,8 @@ class _SesionesTabState extends State<SesionesTab> {
                   24.0, 12.0, 24.0, 96.0),
               children: [
                 if (sessions.isEmpty)
-                  const EmptyHint('Aún no hay sesiones registradas.')
+                  const EmptyHint('Aún no hay sesiones registradas.',
+                      icon: Icons.event_note_outlined)
                 else
                   ...sessions.map((session) => _SessionCard(
                         session: session,

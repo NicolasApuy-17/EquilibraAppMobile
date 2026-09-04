@@ -325,14 +325,21 @@ class _PsychologistCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6.0),
-              FutureBuilder<AggregateQuerySnapshot>(
-                future: UsersRecord.collection
-                    .where('role', isEqualTo: 'paciente')
-                    .where('psychologistRef', isEqualTo: psychologist.reference)
-                    .count()
-                    .get(),
+              // A regular (non-aggregate) query, not `.count()`: Firestore's
+              // security-rules evaluation for `.count()` aggregation
+              // queries doesn't reliably support the same `resource.data`
+              // field comparisons a normal query does, which made this
+              // always read 0 regardless of the real count. A live stream
+              // also means this number updates the moment a patient is
+              // linked/reassigned, instead of only on next screen load.
+              StreamBuilder<List<UsersRecord>>(
+                stream: queryUsersRecord(
+                  queryBuilder: (q) => q
+                      .where('role', isEqualTo: 'paciente')
+                      .where('psychologistRef', isEqualTo: psychologist.reference),
+                ),
                 builder: (context, snapshot) {
-                  final count = snapshot.data?.count;
+                  final count = snapshot.data?.length;
                   return Text(
                     count == null
                         ? 'Consultantes: ...'

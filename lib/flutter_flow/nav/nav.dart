@@ -337,8 +337,15 @@ extension GoRouterExtensions on GoRouter {
 }
 
 extension _GoRouterStateExtensions on GoRouterState {
+  // `extra` is also used to hand a whole record (e.g. a `UsersRecord`) or a
+  // plain value (e.g. a conversation id `String`) straight to a route's
+  // builder -- see `PsychologistPatientDetailWidget` / `PsychologistChatWidget`
+  // in nav.dart, which read `state.extra` directly instead of through this
+  // map. Only treat `extra` as the transition-info params map when it
+  // actually is one; any other `extra` payload just means "no extra
+  // params" here; the destination builder reads it separately.
   Map<String, dynamic> get extraMap =>
-      extra != null ? extra as Map<String, dynamic> : {};
+      extra is Map<String, dynamic> ? extra as Map<String, dynamic> : {};
   Map<String, dynamic> get allParams => <String, dynamic>{}
     ..addAll(pathParameters)
     ..addAll(uri.queryParameters)

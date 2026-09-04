@@ -297,54 +297,6 @@ exports.adminDiagnosePatientLink = onCall({ cors: true }, async (request) => {
 });
 
 /**
- * Any signed-in psychologist can call this for themselves (no id typed by
- * anyone -- uses `request.auth.uid` directly, so there's zero chance of a
- * transcription mix-up like '0' vs 'O'). Reports, character-code-exact, how
- * many patients a reference built from their own uid actually matches, and
- * separately finds any patient whose stored `psychologistRef` merely LOOKS
- * like their uid (same `.id` string) but isn't the same reference -- which
- * is exactly the kind of near-miss a human eyeballing two strings would
- * never reliably catch.
- */
-exports.diagnoseMyPatients = onCall({ cors: true }, async (request) => {
-  assertAuthenticated(request);
-  const myUid = request.auth.uid;
-  const db = admin.firestore();
-  const myRef = db.collection("users").doc(myUid);
-
-  const exactMatch = await db.collection("users")
-    .where("role", "==", "paciente")
-    .where("psychologistRef", "==", myRef)
-    .get();
-
-  const allPatients = await db.collection("users").where("role", "==", "paciente").get();
-  const nearMisses = [];
-  for (const doc of allPatients.docs) {
-    const ref = doc.data().psychologistRef;
-    if (!ref) continue;
-    const idMatches = ref.id === myUid;
-    const isSameRef = ref.isEqual(myRef);
-    if (idMatches && !isSameRef) {
-      nearMisses.push({
-        patientId: doc.id,
-        myUid,
-        storedRefId: ref.id,
-        myUidCharCodes: [...myUid].map((c) => c.charCodeAt(0)),
-        storedRefIdCharCodes: [...ref.id].map((c) => c.charCodeAt(0)),
-      });
-    }
-  }
-
-  return {
-    myUid,
-    myRefPath: myRef.path,
-    exactMatchCount: exactMatch.size,
-    exactMatchPatientIds: exactMatch.docs.map((d) => d.id),
-    nearMisses,
-  };
-});
-
-/**
  * Admin-only: activates or deactivates a psychologist's or patient's
  * account. Disables the underlying Firebase Auth user (blocking sign-in
  * and invalidating their session at the next token refresh) in addition to

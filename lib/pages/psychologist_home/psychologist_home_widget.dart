@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
@@ -7,7 +5,6 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/index.dart';
 import '/utils/date_format_es.dart';
 import '/utils/error_logging.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -376,50 +373,6 @@ class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
                             },
                           ),
                           const SizedBox(height: 24.0),
-                          // TEMPORARY debug section to track down a report
-                          // of "Mis consultantes" showing empty despite
-                          // linked patients. Remove once that's resolved.
-                          SelectableText(
-                            'DEBUG myRef: ${myRef.path}',
-                            style: const TextStyle(fontSize: 10.0, color: Colors.grey),
-                          ),
-                          TextButton(
-                            onPressed: () async {
-                              Map<String, dynamic>? result;
-                              String? error;
-                              try {
-                                final callable = FirebaseFunctions.instance
-                                    .httpsCallable('diagnoseMyPatients');
-                                final response = await callable.call();
-                                result = Map<String, dynamic>.from(response.data as Map);
-                              } catch (e) {
-                                error = e.toString();
-                              }
-                              if (!context.mounted) return;
-                              await showDialog<void>(
-                                context: context,
-                                builder: (dialogContext) => AlertDialog(
-                                  title: const Text('Diagnóstico (temporal)'),
-                                  content: SingleChildScrollView(
-                                    child: SelectableText(
-                                      error ??
-                                          const JsonEncoder.withIndent('  ')
-                                              .convert(result),
-                                      style: const TextStyle(
-                                          fontFamily: 'monospace', fontSize: 11.0),
-                                    ),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(dialogContext),
-                                      child: const Text('Cerrar'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            child: const Text('DEBUG: comparar con mis pacientes'),
-                          ),
                           Text(
                             'Mis consultantes',
                             style: FlutterFlowTheme.of(context)
@@ -554,67 +507,153 @@ class _DashboardSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: 12.0,
-          runSpacing: 12.0,
+        Row(
           children: [
-            _StatTile(
-              label: 'Consultantes activos',
-              value: '${data.patients.length}',
-              icon: Icons.groups_rounded,
+            Expanded(
+              child: _StatTile(
+                label: 'Consultantes activos',
+                value: '${data.patients.length}',
+                icon: Icons.groups_rounded,
+              ),
             ),
-            _StatTile(
-              label: 'Con registro esta semana',
-              value: '${data.patientsWithRecordThisWeek}',
-              icon: Icons.event_available_rounded,
-            ),
-            _StatTile(
-              label: 'Tareas pendientes',
-              value: '${data.totalPendingTasks}',
-              icon: Icons.pending_actions_rounded,
-            ),
-            _StatTile(
-              label: 'Alertas (7 días)',
-              value: '${data.alerts.length}',
-              icon: Icons.warning_amber_rounded,
-              highlight: data.alerts.isNotEmpty,
+            const SizedBox(width: 12.0),
+            Expanded(
+              child: _StatTile(
+                label: 'Con registro esta semana',
+                value: '${data.patientsWithRecordThisWeek}',
+                icon: Icons.event_available_rounded,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 20.0),
+        const SizedBox(height: 12.0),
+        Row(
+          children: [
+            Expanded(
+              child: _StatTile(
+                label: 'Tareas pendientes',
+                value: '${data.totalPendingTasks}',
+                icon: Icons.pending_actions_rounded,
+              ),
+            ),
+            const SizedBox(width: 12.0),
+            Expanded(
+              child: _StatTile(
+                label: 'Alertas (7 días)',
+                value: '${data.alerts.length}',
+                icon: Icons.warning_amber_rounded,
+                highlight: data.alerts.isNotEmpty,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24.0),
         if (data.alerts.isNotEmpty) ...[
-          _SectionTitle('Alertas importantes'),
-          const SizedBox(height: 8.0),
-          ...data.alerts.map((entry) => _AlertRow(entry: entry)),
+          _DashboardCard(
+            title: 'Alertas importantes',
+            icon: Icons.warning_amber_rounded,
+            iconColor: FlutterFlowTheme.of(context).error,
+            children: data.alerts.map((entry) => _AlertRow(entry: entry)).toList(),
+          ),
           const SizedBox(height: 16.0),
         ],
-        _SectionTitle('Registros emocionales recientes'),
-        const SizedBox(height: 8.0),
-        if (data.recentRecords.isEmpty)
-          _EmptyHint('Sin registros emocionales recientes.')
-        else
-          ...data.recentRecords.map((entry) => _RecentRecordRow(entry: entry)),
+        _DashboardCard(
+          title: 'Registros emocionales recientes',
+          icon: Icons.mood_rounded,
+          emptyText: 'Sin registros emocionales recientes.',
+          children:
+              data.recentRecords.map((entry) => _RecentRecordRow(entry: entry)).toList(),
+        ),
         const SizedBox(height: 16.0),
-        _SectionTitle('Tareas cumplidas recientemente'),
-        const SizedBox(height: 8.0),
-        if (data.recentlyCompletedTasks.isEmpty)
-          _EmptyHint('Sin tareas cumplidas todavía.')
-        else
-          ...data.recentlyCompletedTasks
-              .map((task) => _SimpleRow(title: task.title, subtitle: 'Cumplida')),
+        _DashboardCard(
+          title: 'Tareas cumplidas recientemente',
+          icon: Icons.task_alt_rounded,
+          emptyText: 'Sin tareas cumplidas todavía.',
+          children: data.recentlyCompletedTasks
+              .map((task) => _SimpleRow(title: task.title, subtitle: 'Cumplida'))
+              .toList(),
+        ),
         const SizedBox(height: 16.0),
-        _SectionTitle('Próximas sesiones'),
-        const SizedBox(height: 8.0),
-        if (data.upcomingSessions.isEmpty)
-          _EmptyHint('No tienes próximas sesiones programadas.')
-        else
-          ...data.upcomingSessions.map((upcoming) => _SimpleRow(
-                title: upcoming.patient.displayName.isEmpty
-                    ? upcoming.patient.email
-                    : upcoming.patient.displayName,
-                subtitle: formatDateEs(upcoming.date),
-              )),
+        _DashboardCard(
+          title: 'Próximas sesiones',
+          icon: Icons.event_rounded,
+          emptyText: 'No tienes próximas sesiones programadas.',
+          children: data.upcomingSessions
+              .map((upcoming) => _SimpleRow(
+                    title: upcoming.patient.displayName.isEmpty
+                        ? upcoming.patient.email
+                        : upcoming.patient.displayName,
+                    subtitle: formatDateEs(upcoming.date),
+                  ))
+              .toList(),
+        ),
       ],
+    );
+  }
+}
+
+/// Groups one dashboard section (a title with an icon, plus its rows) into
+/// a single visually distinct surface, so the dashboard reads as a set of
+/// organized cards rather than one long flat list of text.
+class _DashboardCard extends StatelessWidget {
+  const _DashboardCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+    this.iconColor,
+    this.emptyText,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color? iconColor;
+  final String? emptyText;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FlutterFlowTheme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: theme.secondaryBackground,
+        borderRadius: BorderRadius.circular(18.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18.0, color: iconColor ?? theme.primary),
+              const SizedBox(width: 8.0),
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.titleSmall.override(
+                    font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                    color: theme.primaryText,
+                    letterSpacing: 0.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12.0),
+          if (children.isEmpty)
+            Text(
+              emptyText ?? 'Nada por aquí todavía.',
+              style: theme.bodySmall.override(
+                font: GoogleFonts.outfit(),
+                color: theme.secondaryText,
+                letterSpacing: 0.0,
+              ),
+            )
+          else
+            ...children,
+        ],
+      ),
     );
   }
 }
@@ -636,13 +675,13 @@ class _StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
     return Container(
-      width: (MediaQuery.of(context).size.width - 24.0 - 12.0) / 2,
       padding: const EdgeInsets.all(14.0),
       decoration: BoxDecoration(
         color: highlight
-            ? theme.error.withOpacity(0.08)
+            ? theme.error.withValues(alpha: 0.08)
             : theme.secondaryBackground,
         borderRadius: BorderRadius.circular(16.0),
+        border: highlight ? Border.all(color: theme.error.withValues(alpha: 0.3)) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -672,37 +711,6 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: FlutterFlowTheme.of(context).titleSmall.override(
-              font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
-              color: FlutterFlowTheme.of(context).primaryText,
-              letterSpacing: 0.0,
-              fontWeight: FontWeight.bold,
-            ),
-      );
-}
-
-class _EmptyHint extends StatelessWidget {
-  const _EmptyHint(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text,
-        style: FlutterFlowTheme.of(context).bodySmall.override(
-              font: GoogleFonts.outfit(),
-              color: FlutterFlowTheme.of(context).secondaryText,
-              letterSpacing: 0.0,
-            ),
-      );
-}
-
 class _SimpleRow extends StatelessWidget {
   const _SimpleRow({required this.title, required this.subtitle});
 
@@ -715,7 +723,7 @@ class _SimpleRow extends StatelessWidget {
       padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 8.0),
       child: Container(
         decoration: BoxDecoration(
-          color: FlutterFlowTheme.of(context).secondaryBackground,
+          color: FlutterFlowTheme.of(context).primaryBackground,
           borderRadius: BorderRadius.circular(14.0),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
@@ -766,7 +774,7 @@ class _AlertRow extends StatelessWidget {
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: theme.error.withOpacity(0.08),
+            color: theme.error.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(14.0),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
@@ -822,7 +830,7 @@ class _RecentRecordRow extends StatelessWidget {
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: theme.secondaryBackground,
+            color: theme.primaryBackground,
             borderRadius: BorderRadius.circular(14.0),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),

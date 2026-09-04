@@ -39,6 +39,12 @@ class _ActividadesTabState extends State<ActividadesTab> {
             .where('psychologistRef', isEqualTo: myRef),
       ),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Padding(
+            padding: EdgeInsets.all(24.0),
+            child: AsyncErrorHint(text: 'No se pudieron cargar las actividades.'),
+          );
+        }
         if (!snapshot.hasData) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 32.0),
@@ -56,7 +62,8 @@ class _ActividadesTabState extends State<ActividadesTab> {
                   24.0, 12.0, 24.0, 96.0),
               children: [
                 if (assignments.isEmpty)
-                  const EmptyHint('Aún no le has asignado actividades.')
+                  const EmptyHint('Aún no le has asignado actividades.',
+                      icon: Icons.self_improvement_outlined)
                 else
                   ...assignments.map((a) => _AssignmentCard(assignment: a)),
               ],
@@ -344,6 +351,12 @@ class _AssignActivitySheetState extends State<_AssignActivitySheet> {
                     queryBuilder: (q) => q.where('active', isEqualTo: true),
                   ),
                   builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: AsyncErrorHint(text: 'No se pudo cargar el catálogo.'),
+                      );
+                    }
                     if (!snapshot.hasData) {
                       return const Padding(
                         padding: EdgeInsets.symmetric(vertical: 24.0),
@@ -353,7 +366,8 @@ class _AssignActivitySheetState extends State<_AssignActivitySheet> {
                     final activities = snapshot.data!;
                     if (activities.isEmpty) {
                       return const EmptyHint(
-                          'El administrador aún no ha cargado actividades en el catálogo.');
+                          'El administrador aún no ha cargado actividades en el catálogo.',
+                          icon: Icons.category_outlined);
                     }
                     return ListView.builder(
                       shrinkWrap: true,

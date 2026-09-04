@@ -29,21 +29,96 @@ class SectionTitle extends StatelessWidget {
 }
 
 class EmptyHint extends StatelessWidget {
-  const EmptyHint(this.text, {super.key});
+  const EmptyHint(this.text, {super.key, this.icon = Icons.inbox_outlined});
+  final String text;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FlutterFlowTheme.of(context);
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 8.0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: theme.secondaryBackground,
+          borderRadius: BorderRadius.circular(14.0),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 26.0, color: theme.secondaryText),
+            const SizedBox(height: 8.0),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: theme.bodySmall.override(
+                font: GoogleFonts.outfit(),
+                color: theme.secondaryText,
+                letterSpacing: 0.0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown instead of an infinite spinner when a stream/future genuinely
+/// fails (as opposed to just being empty) -- every async section in the
+/// patient detail screen must check this before `!snapshot.hasData`, or a
+/// real error looks identical to "still loading" forever.
+class AsyncErrorHint extends StatelessWidget {
+  const AsyncErrorHint({super.key, this.text = 'No se pudo cargar esta información.'});
   final String text;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 8.0),
-        child: Text(
-          text,
-          style: FlutterFlowTheme.of(context).bodySmall.override(
-                font: GoogleFonts.outfit(),
-                color: FlutterFlowTheme.of(context).secondaryText,
-                letterSpacing: 0.0,
-              ),
+  Widget build(BuildContext context) {
+    final theme = FlutterFlowTheme.of(context);
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 8.0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
+        decoration: BoxDecoration(
+          color: theme.error.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14.0),
         ),
-      );
+        child: Row(
+          children: [
+            Icon(Icons.error_outline_rounded, size: 20.0, color: theme.error),
+            const SizedBox(width: 10.0),
+            Expanded(
+              child: Text(
+                text,
+                style: theme.bodySmall.override(
+                  font: GoogleFonts.outfit(),
+                  color: theme.error,
+                  letterSpacing: 0.0,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Resolves an [AsyncSnapshot] into loading/error/data states in the one
+/// order every async section here needs -- error checked *before*
+/// `!hasData`, so a genuine failure can never be mistaken for "still
+/// loading" and spin forever.
+Widget asyncSection<T>(
+  AsyncSnapshot<T> snapshot,
+  Widget Function(T data) builder, {
+  String errorText = 'No se pudo cargar esta información.',
+}) {
+  if (snapshot.hasError) return AsyncErrorHint(text: errorText);
+  if (!snapshot.hasData) return const LoadingRow();
+  return builder(snapshot.data as T);
 }
 
 class LoadingRow extends StatelessWidget {

@@ -173,10 +173,21 @@ service cloud.firestore {
     match /users/{document} {
       allow create: if request.auth.uid == document &&
         request.resource.data.keys().hasOnly(selfManagedUserFields());
+      // The last clause is a direct field comparison, not
+      // `isAssignedPsychologist(document)` -- that helper does a `get()` on
+      // `users/{document}` to check this same condition, which here would
+      // be a `get()` on the exact document already being evaluated as
+      // `resource`. That self-referential lookup made every `list` query a
+      // psychologist ran against their own patients (e.g. "Mis
+      // consultantes") come back empty, even though the reference values
+      // matched perfectly on both ends -- Firestore's rule engine doesn't
+      // resolve a self-get() to `resource.data` here. Comparing
+      // `resource.data.psychologistRef` directly needs no extra read and
+      // has no such issue.
       allow read: if request.auth.uid == document ||
         isAdmin() ||
         resource.data.role == 'psicologo' ||
-        isAssignedPsychologist(document);
+        resource.data.psychologistRef == userRef(request.auth.uid);
       // A patient may set their own `role` to 'paciente' exactly once,
       // right after sign-up (see create_account_screen_widget.dart) --
       // never to any other value, and never a second time. Every other

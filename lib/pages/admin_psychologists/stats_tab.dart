@@ -30,8 +30,8 @@ class _AdminStats {
 /// Admin-only usage stats. Deliberately never touches `sessions` or
 /// `patient_notes` -- those stay 100% private to each psychologist, even
 /// from the admin (see firestore.rules). Everything here is one-shot
-/// (`.get()`/`.count()`), not live, with pull-to-refresh -- these are
-/// summary numbers, not something that needs to update in real time.
+/// (`.get()`), not live, with pull-to-refresh -- these are summary
+/// numbers, not something that needs to update in real time.
 class AdminStatsTab extends StatefulWidget {
   const AdminStatsTab({super.key});
 
@@ -61,10 +61,14 @@ class _AdminStatsTabState extends State<AdminStatsTab> {
         .length;
     final deactivatedAccounts = users.where((u) => !u.active).length;
 
-    final recordsCount =
-        (await RecordsRecord.collection.count().get()).count ?? 0;
+    // Regular queries, not `.count()`: Firestore's security-rules
+    // evaluation for `.count()` aggregation queries doesn't reliably
+    // support the `resource.data`-dependent rules these collections use
+    // (owner OR assigned-psychologist OR admin), which made this always
+    // read 0 regardless of the real count.
+    final recordsCount = (await RecordsRecord.collection.get()).docs.length;
     final behavioralCount =
-        (await BehavioralRecordsRecord.collection.count().get()).count ?? 0;
+        (await BehavioralRecordsRecord.collection.get()).docs.length;
 
     final tasksSnap = await TasksRecord.collection.get();
     final tasks = tasksSnap.docs.map((d) => TasksRecord.fromSnapshot(d)).toList();

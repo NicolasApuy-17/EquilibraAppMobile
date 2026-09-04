@@ -2,6 +2,7 @@ import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/utils/date_format_es.dart';
+import '/utils/error_logging.dart';
 import '/utils/error_messages.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -57,10 +58,35 @@ class _ResumenTabState extends State<ResumenTab> {
     _future = _load();
   }
 
+  static const _empty = _ResumenData(
+    lastSession: null,
+    lastRecord: null,
+    recordsThisWeek: 0,
+    tasksAssigned: 0,
+    tasksCompleted: 0,
+    activitiesCompleted: 0,
+    avgIntensityThisWeek: null,
+    avgIntensityLastWeek: null,
+    timeline: [],
+    note: '',
+  );
+
   DocumentReference get _noteRef =>
       FirebaseFirestore.instance.collection('patient_notes').doc(widget.patient.reference.id);
 
+  /// Never throws -- a failure on any one sub-query (e.g. the private note,
+  /// which only the assigned psychologist can read) must not leave the
+  /// whole tab spinning forever; it just falls back to empty stats.
   Future<_ResumenData> _load() async {
+    try {
+      return await _loadOrThrow();
+    } catch (e, stackTrace) {
+      logAppError(context: 'ResumenTab._load', error: e, stackTrace: stackTrace);
+      return _empty;
+    }
+  }
+
+  Future<_ResumenData> _loadOrThrow() async {
     final patientRef = widget.patient.reference;
     final myRef = currentUserReference;
     final now = DateTime.now();
@@ -211,6 +237,14 @@ class _ResumenTabState extends State<ResumenTab> {
       child: FutureBuilder<_ResumenData>(
         future: _future,
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: AsyncErrorHint(text: 'No se pudo cargar el resumen.'),
+              ),
+            );
+          }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }

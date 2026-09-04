@@ -155,6 +155,14 @@ class _AdminActivitiesTabState extends State<AdminActivitiesTab> {
         StreamBuilder<List<ActivitiesRecord>>(
           stream: queryActivitiesRecord(),
           builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: Text('No se pudo cargar el catálogo de actividades.'),
+                ),
+              );
+            }
             if (!snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
