@@ -301,7 +301,7 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         ),
                                   ),
                                   Wrap(
-                                    spacing: 8.0,
+                                    spacing: 6.0,
                                     runSpacing: 8.0,
                                     alignment: WrapAlignment.center,
                                     crossAxisAlignment:
@@ -312,7 +312,7 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                     clipBehavior: Clip.none,
                                     children: [
                                       Container(
-                                        height: 40.0,
+                                        height: 36.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
                                           model: _model.emotionPillCleanModel1,
@@ -338,7 +338,7 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         ),
                                       ),
                                       Container(
-                                        height: 40.0,
+                                        height: 36.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
                                           model: _model.emotionPillCleanModel2,
@@ -364,7 +364,7 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         ),
                                       ),
                                       Container(
-                                        height: 40.0,
+                                        height: 36.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
                                           model: _model.emotionPillCleanModel3,
@@ -390,7 +390,7 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         ),
                                       ),
                                       Container(
-                                        height: 40.0,
+                                        height: 36.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
                                           model: _model.emotionPillCleanModel4,
@@ -416,7 +416,7 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         ),
                                       ),
                                       Container(
-                                        height: 40.0,
+                                        height: 36.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
                                           model: _model.emotionPillCleanModel5,
@@ -442,7 +442,7 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         ),
                                       ),
                                       Container(
-                                        height: 40.0,
+                                        height: 36.0,
                                         decoration: BoxDecoration(),
                                         child: wrapWithModel(
                                           model: _model.emotionPillCleanModel6,
@@ -503,8 +503,8 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                         onTap: _showAddEmotionDialog,
                                         child: Container(
                                           constraints:
-                                              BoxConstraints(minWidth: 88.0),
-                                          height: 40.0,
+                                              BoxConstraints(minWidth: 78.0),
+                                          height: 34.0,
                                           padding: EdgeInsetsDirectional
                                               .fromSTEB(12.0, 0.0, 12.0, 0.0),
                                           decoration: BoxDecoration(
@@ -776,6 +776,9 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                             timestamp: getCurrentTimestamp,
                                             intensity: _model.intensityValue,
                                             userRef: currentUserReference,
+                                            psychologistRef:
+                                                currentUserDocument
+                                                    ?.psychologistRef,
                                           ),
                                         );
 

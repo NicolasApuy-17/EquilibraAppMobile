@@ -103,19 +103,33 @@ class _ResumenTabState extends State<ResumenTab> {
           ..sort((a, b) =>
               (b.sessionDate ?? DateTime(2000)).compareTo(a.sessionDate ?? DateTime(2000)));
 
-    final recordsSnap =
-        await RecordsRecord.collection.where('userRef', isEqualTo: patientRef).get();
+    // Each query below also filters on `psychologistRef` (our own ref), not
+    // just the patient's `userRef` -- a `list` query's security rule can
+    // only read `resource.data` fields that are *also* constrained by that
+    // query's own `where` clauses, and the read rule for these collections
+    // checks `psychologistRef`. Without this second filter, Firestore
+    // treats that field as undefined while proving the query safe and
+    // denies the whole read (confirmed with the Firestore Rules emulator
+    // -- see registros_tab.dart). Multiple equality filters like this
+    // don't need a composite index.
+    final recordsSnap = await RecordsRecord.collection
+        .where('userRef', isEqualTo: patientRef)
+        .where('psychologistRef', isEqualTo: myRef)
+        .get();
     final records = recordsSnap.docs.map((d) => RecordsRecord.fromSnapshot(d)).toList()
       ..sort((a, b) => (b.timestamp ?? DateTime(2000)).compareTo(a.timestamp ?? DateTime(2000)));
 
     final behavioralSnap = await BehavioralRecordsRecord.collection
         .where('userRef', isEqualTo: patientRef)
+        .where('psychologistRef', isEqualTo: myRef)
         .get();
     final behaviors =
         behavioralSnap.docs.map((d) => BehavioralRecordsRecord.fromSnapshot(d)).toList();
 
-    final tasksSnap =
-        await TasksRecord.collection.where('userRef', isEqualTo: patientRef).get();
+    final tasksSnap = await TasksRecord.collection
+        .where('userRef', isEqualTo: patientRef)
+        .where('psychologistRef', isEqualTo: myRef)
+        .get();
     final tasks = tasksSnap.docs.map((d) => TasksRecord.fromSnapshot(d)).toList();
 
     final activitiesSnap = await ActivityAssignmentsRecord.collection

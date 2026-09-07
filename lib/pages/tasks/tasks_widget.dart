@@ -825,6 +825,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
               dueDate: _dueDate,
               status: _status,
               userRef: currentUserReference,
+              psychologistRef: currentUserDocument?.psychologistRef,
               createdByRef: currentUserReference,
               createdTime: getCurrentTimestamp,
               completedTime: completedTime,

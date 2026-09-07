@@ -1,3 +1,4 @@
+import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/utils/date_format_es.dart';
@@ -43,15 +44,28 @@ class _RegistrosTabState extends State<RegistrosTab> {
   // error -- reproduced directly with a patient's brand-new emotional
   // record. Refreshed manually instead: on pull-to-refresh, and after
   // editing a comment.
+  //
+  // Each query filters on BOTH `userRef` and `psychologistRef` -- not just
+  // `userRef` -- because of a separate, real Firestore restriction: for a
+  // `list` query, the security rule can only read `resource.data` fields
+  // that are *also* constrained by that query's own `where` clauses. The
+  // read rule here checks `psychologistRef`; if the query doesn't also
+  // filter on it, Firestore treats that field as undefined while proving
+  // the query safe and denies the whole thing outright (confirmed with the
+  // Firestore Rules emulator: dropping this second filter reproduces
+  // "Property psychologistRef is undefined on object" on every read).
+  // Multiple equality filters like this don't need a composite index.
   Future<List<RecordsRecord>> _loadRecords() => queryRecordsRecordOnce(
-        queryBuilder: (q) =>
-            q.where('userRef', isEqualTo: widget.patient.reference),
+        queryBuilder: (q) => q
+            .where('userRef', isEqualTo: widget.patient.reference)
+            .where('psychologistRef', isEqualTo: currentUserReference),
       );
 
   Future<List<BehavioralRecordsRecord>> _loadBehavioral() =>
       queryBehavioralRecordsRecordOnce(
-        queryBuilder: (q) =>
-            q.where('userRef', isEqualTo: widget.patient.reference),
+        queryBuilder: (q) => q
+            .where('userRef', isEqualTo: widget.patient.reference)
+            .where('psychologistRef', isEqualTo: currentUserReference),
       );
 
   Future<void> _refresh() async {

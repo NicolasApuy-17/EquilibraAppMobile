@@ -1,5 +1,6 @@
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
+import '/components/tablet_bounded.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/services/psychologist_service.dart';
@@ -24,8 +25,7 @@ class PsychologistChatWidget extends StatefulWidget {
   static String routePath = '/psychologistChat';
 
   @override
-  State<PsychologistChatWidget> createState() =>
-      _PsychologistChatWidgetState();
+  State<PsychologistChatWidget> createState() => _PsychologistChatWidgetState();
 }
 
 class _PsychologistChatWidgetState extends State<PsychologistChatWidget> {
@@ -39,8 +39,8 @@ class _PsychologistChatWidgetState extends State<PsychologistChatWidget> {
 
   DocumentReference get _conversationRef =>
       FirebaseFirestore.instance.collection('conversations').doc(
-        widget.conversationId,
-      );
+            widget.conversationId,
+          );
 
   @override
   void initState() {
@@ -59,7 +59,8 @@ class _PsychologistChatWidgetState extends State<PsychologistChatWidget> {
       final myPath = currentUserReference?.path;
       final patientRef = data['patientRef'] as DocumentReference?;
       final psychologistRef = data['psychologistRef'] as DocumentReference?;
-      final otherRef = patientRef?.path == myPath ? psychologistRef : patientRef;
+      final otherRef =
+          patientRef?.path == myPath ? psychologistRef : patientRef;
       if (otherRef == null) {
         if (mounted) setState(() => _loadFailed = true);
         return;
@@ -123,27 +124,29 @@ class _PsychologistChatWidgetState extends State<PsychologistChatWidget> {
       child: Scaffold(
         backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
         body: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(context),
-              if (_loadFailed)
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      'No se pudo abrir esta conversación.',
-                      style: FlutterFlowTheme.of(context).bodyMedium.override(
-                            font: GoogleFonts.outfit(),
-                            color: FlutterFlowTheme.of(context).error,
-                            letterSpacing: 0.0,
-                          ),
+          child: TabletBounded(
+            child: Column(
+              children: [
+                _buildHeader(context),
+                if (_loadFailed)
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        'No se pudo abrir esta conversación.',
+                        style: FlutterFlowTheme.of(context).bodyMedium.override(
+                              font: GoogleFonts.outfit(),
+                              color: FlutterFlowTheme.of(context).error,
+                              letterSpacing: 0.0,
+                            ),
+                      ),
                     ),
-                  ),
-                )
-              else ...[
-                Expanded(child: _buildMessageList(context)),
-                _buildInputBar(context),
+                  )
+                else ...[
+                  Expanded(child: _buildMessageList(context)),
+                  _buildInputBar(context),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

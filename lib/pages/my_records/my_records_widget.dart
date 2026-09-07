@@ -457,33 +457,47 @@ class _RecordCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 10.0,
-                      height: 10.0,
-                      decoration: BoxDecoration(
-                        color: emotionColor(context, record.emotion),
-                        shape: BoxShape.circle,
+                // `Expanded`, not a plain `Row`: a custom emotion label can
+                // be up to 30 characters (see emotional_record_widget.dart)
+                // -- long enough, combined with the intensity chip on the
+                // other side of this `spaceBetween` row, to overflow on a
+                // narrow phone if neither side can shrink.
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 10.0,
+                        height: 10.0,
+                        decoration: BoxDecoration(
+                          color: emotionColor(context, record.emotion),
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    Padding(
-                      padding:
-                          EdgeInsetsDirectional.fromSTEB(8.0, 0.0, 0.0, 0.0),
-                      child: Text(
-                        record.emotion.isEmpty ? 'Sin emoción' : record.emotion,
-                        style: FlutterFlowTheme.of(context)
-                            .titleMedium
-                            .override(
-                              font: GoogleFonts.outfit(
-                                  fontWeight: FontWeight.w600),
-                              color: FlutterFlowTheme.of(context).primaryText,
-                              letterSpacing: 0.0,
-                              fontWeight: FontWeight.w600,
-                            ),
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsetsDirectional.fromSTEB(
+                              8.0, 0.0, 8.0, 0.0),
+                          child: Text(
+                            record.emotion.isEmpty
+                                ? 'Sin emoción'
+                                : record.emotion,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: FlutterFlowTheme.of(context)
+                                .titleMedium
+                                .override(
+                                  font: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.w600),
+                                  color:
+                                      FlutterFlowTheme.of(context).primaryText,
+                                  letterSpacing: 0.0,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Container(
                   padding: EdgeInsetsDirectional.fromSTEB(10.0, 4.0, 10.0, 4.0),
@@ -563,44 +577,68 @@ class _RecordCard extends StatelessWidget {
               ),
             Padding(
               padding: EdgeInsetsDirectional.fromSTEB(0.0, 12.0, 0.0, 0.0),
-              child: Row(
+              // `Wrap`, not `Row`: a long Spanish date ("24 de septiembre de
+              // 2026") plus the time can crowd out the smallest phone
+              // widths -- wrapping the time onto its own line there costs
+              // nothing on a normal phone or tablet, where it always fits
+              // on one line anyway.
+              child: Wrap(
+                spacing: 4.0,
+                runSpacing: 4.0,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Icon(
-                    Icons.event_rounded,
-                    size: 14.0,
-                    color: FlutterFlowTheme.of(context).secondaryText,
-                  ),
-                  Padding(
-                    padding:
-                        EdgeInsetsDirectional.fromSTEB(4.0, 0.0, 12.0, 0.0),
-                    child: Text(
-                      timestamp != null ? formatDateEs(timestamp) : 'Sin fecha',
-                      style: FlutterFlowTheme.of(context).labelSmall.override(
-                            font: GoogleFonts.outfit(),
-                            color: FlutterFlowTheme.of(context).secondaryText,
-                            letterSpacing: 0.0,
-                          ),
-                    ),
-                  ),
-                  if (timestamp != null) ...[
-                    Icon(
-                      Icons.access_time_rounded,
-                      size: 14.0,
-                      color: FlutterFlowTheme.of(context).secondaryText,
-                    ),
-                    Padding(
-                      padding:
-                          EdgeInsetsDirectional.fromSTEB(4.0, 0.0, 0.0, 0.0),
-                      child: Text(
-                        formatTime24(timestamp),
-                        style: FlutterFlowTheme.of(context).labelSmall.override(
-                              font: GoogleFonts.outfit(),
-                              color: FlutterFlowTheme.of(context).secondaryText,
-                              letterSpacing: 0.0,
-                            ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.event_rounded,
+                        size: 14.0,
+                        color: FlutterFlowTheme.of(context).secondaryText,
                       ),
+                      Padding(
+                        padding:
+                            EdgeInsetsDirectional.fromSTEB(4.0, 0.0, 0.0, 0.0),
+                        child: Text(
+                          timestamp != null
+                              ? formatDateEs(timestamp)
+                              : 'Sin fecha',
+                          style:
+                              FlutterFlowTheme.of(context).labelSmall.override(
+                                    font: GoogleFonts.outfit(),
+                                    color: FlutterFlowTheme.of(context)
+                                        .secondaryText,
+                                    letterSpacing: 0.0,
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (timestamp != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 14.0,
+                          color: FlutterFlowTheme.of(context).secondaryText,
+                        ),
+                        Padding(
+                          padding: EdgeInsetsDirectional.fromSTEB(
+                              4.0, 0.0, 0.0, 0.0),
+                          child: Text(
+                            formatTime24(timestamp),
+                            style: FlutterFlowTheme.of(context)
+                                .labelSmall
+                                .override(
+                                  font: GoogleFonts.outfit(),
+                                  color: FlutterFlowTheme.of(context)
+                                      .secondaryText,
+                                  letterSpacing: 0.0,
+                                ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
                 ],
               ),
             ),

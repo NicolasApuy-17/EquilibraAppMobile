@@ -166,6 +166,26 @@ class PsychologistService {
     }
   }
 
+  /// Admin-only, one-off maintenance: stamps `psychologistRef` onto
+  /// existing `records`/`behavioral_records`/`tasks` documents that predate
+  /// that field, so they become visible under the current (non-`get()`)
+  /// read rule. Safe to call more than once. Returns the raw per-collection
+  /// counts from `adminBackfillPsychologistRefs`.
+  Future<Map<String, dynamic>> backfillPsychologistRefs() async {
+    try {
+      final result =
+          await _functions.httpsCallable('adminBackfillPsychologistRefs').call();
+      final data = result.data;
+      return data is Map ? Map<String, dynamic>.from(data) : {};
+    } on FirebaseFunctionsException catch (e) {
+      throw PsychologistServiceException(_messageForCode(e.code, e.message));
+    } catch (_) {
+      throw const PsychologistServiceException(
+        'No pudimos conectarnos en este momento. Revisa tu conexión e inténtalo nuevamente.',
+      );
+    }
+  }
+
   /// Sends a chat message in [conversationId] (either participant may call
   /// this — the backend verifies the caller is actually a participant).
   Future<void> sendConversationMessage({

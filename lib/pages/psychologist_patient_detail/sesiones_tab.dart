@@ -368,7 +368,10 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
                             size: 18.0,
                             color: FlutterFlowTheme.of(context).secondaryText),
                         const SizedBox(width: 8.0),
-                        Text('Fecha de la sesión: ${formatDateEs(_sessionDate)}'),
+                        Expanded(
+                          child: Text(
+                              'Fecha de la sesión: ${formatDateEs(_sessionDate)}'),
+                        ),
                       ],
                     ),
                   ),
@@ -420,9 +423,11 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
                             size: 18.0,
                             color: FlutterFlowTheme.of(context).secondaryText),
                         const SizedBox(width: 8.0),
-                        Text(_nextSessionDate != null
-                            ? 'Próxima sesión: ${formatDateEs(_nextSessionDate!)}'
-                            : 'Próxima sesión: sin definir (toca para elegir)'),
+                        Expanded(
+                          child: Text(_nextSessionDate != null
+                              ? 'Próxima sesión: ${formatDateEs(_nextSessionDate!)}'
+                              : 'Próxima sesión: sin definir (toca para elegir)'),
+                        ),
                       ],
                     ),
                   ),

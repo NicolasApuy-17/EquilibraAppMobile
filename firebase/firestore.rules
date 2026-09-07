@@ -14,9 +14,29 @@ service cloud.firestore {
 
     // True when the caller is the psychologist assigned to `patientUid`
     // (i.e. that patient's own `psychologistRef` points back at the caller).
+    // Only safe to use for a *single-document* check (a `create`/`update`
+    // validation, or a `get` by id) -- seemingly reliable-looking cross-
+    // collection `get()` calls like this one turn out to make `list`
+    // queries (e.g. a psychologist's own "Registros"/"Avances" tabs
+    // querying `records` by `userRef`) silently come back empty instead of
+    // erroring, even though every reference matches -- reproduced directly
+    // with a patient's real emotional records. For anything read via a
+    // list query, denormalize the assigned psychologist onto the document
+    // itself instead (see `psychologistRef` on `records`/
+    // `behavioral_records`/`tasks` below, and the existing pattern on
+    // `sessions`/`activity_assignments`), and compare that field directly.
     function isAssignedPsychologist(patientUid) {
       return request.auth != null &&
         get(userRef(patientUid)).data.psychologistRef == userRef(request.auth.uid);
+    }
+
+    // The psychologist currently assigned to the caller (the patient),
+    // or null if they don't have one -- a single-document `get()` on the
+    // caller's own profile, safe to use even in `create` validation (see
+    // the note on `isAssignedPsychologist` above for why this is NOT safe
+    // to use as part of a `list` query's read rule).
+    function callerPsychologistRef() {
+      return get(userRef(request.auth.uid)).data.get('psychologistRef', null);
     }
 
     // Fields a signed-in user may set on their own `users/{uid}` doc
@@ -29,16 +49,31 @@ service cloud.firestore {
       return ['email', 'display_name', 'photo_url', 'uid', 'phone_number', 'created_time'];
     }
 
+    // `psychologistRef` on a patient-authored document (records,
+    // behavioral_records, tasks) is stamped by the *client* at create time,
+    // not a Cloud Function -- so `create` must verify it actually matches
+    // the caller's own current assignment (`callerPsychologistRef()`, a
+    // single-document `get()`, not a list query, so it doesn't have the
+    // issue described on `isAssignedPsychologist` above) rather than
+    // trusting whatever the client sent. A patient with no psychologist
+    // yet must omit the field entirely (`withoutNulls` in the Dart layer
+    // does this), which is why this compares against the same
+    // `.get(key, null)` default on both sides.
+    function patientRecordPsychologistRefIsValid() {
+      return request.resource.data.get('psychologistRef', null) == callerPsychologistRef();
+    }
+
     match /records/{document} {
       allow create: if request.auth != null &&
-        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
+        patientRecordPsychologistRefIsValid();
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         isAssignedPsychologist(resource.data.userRef.id) ||
+         resource.data.get('psychologistRef', null) == userRef(request.auth.uid) ||
          isAdmin());
       allow update: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         (isAssignedPsychologist(resource.data.userRef.id) &&
+         (resource.data.get('psychologistRef', null) == userRef(request.auth.uid) &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['psychologistComment', 'psychologistCommentTime'])));
       allow delete: if request.auth != null &&
@@ -47,14 +82,15 @@ service cloud.firestore {
 
     match /behavioral_records/{document} {
       allow create: if request.auth != null &&
-        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
+        request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
+        patientRecordPsychologistRefIsValid();
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         isAssignedPsychologist(resource.data.userRef.id) ||
+         resource.data.get('psychologistRef', null) == userRef(request.auth.uid) ||
          isAdmin());
       allow update: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         (isAssignedPsychologist(resource.data.userRef.id) &&
+         (resource.data.get('psychologistRef', null) == userRef(request.auth.uid) &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['psychologistComment', 'psychologistCommentTime'])));
       allow delete: if request.auth != null &&
@@ -72,15 +108,22 @@ service cloud.firestore {
     // userRef`) or assigned by their psychologist. `resource.data.get(...)`
     // with a default is used when reading `createdByRef` back because tasks
     // created before this field existed don't have it -- treated as
-    // self-created, which is what they actually were.
+    // self-created, which is what they actually were. `psychologistRef` is
+    // denormalized the same way as on `records` above, for the same reason
+    // (list-query reads can't safely use `isAssignedPsychologist`): a
+    // self-created task stamps the patient's current psychologist (if any);
+    // a psychologist-assigned task stamps the assigning psychologist, which
+    // is necessarily the caller themself.
     match /tasks/{document} {
       allow create: if request.auth != null &&
         request.resource.data.createdByRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
-        (request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         isAssignedPsychologist(request.resource.data.userRef.id));
+        ((request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
+          patientRecordPsychologistRefIsValid()) ||
+         (isAssignedPsychologist(request.resource.data.userRef.id) &&
+          request.resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid)));
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         isAssignedPsychologist(resource.data.userRef.id) ||
+         resource.data.get('psychologistRef', null) == userRef(request.auth.uid) ||
          isAdmin());
       allow update: if request.auth != null &&
         ((resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
@@ -89,7 +132,7 @@ service cloud.firestore {
                 .hasOnly(['title', 'description', 'dueDate', 'status', 'frequency', 'responseType', 'completedTime'])
             : request.resource.data.diff(resource.data).affectedKeys()
                 .hasOnly(['status', 'responseText', 'responseValue', 'responseAt', 'completedTime']))) ||
-         (isAssignedPsychologist(resource.data.userRef.id) &&
+         (resource.data.get('psychologistRef', null) == userRef(request.auth.uid) &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['title', 'description', 'dueDate', 'frequency', 'responseType', 'feedback', 'feedbackAt'])));
       allow delete: if request.auth != null &&
@@ -122,6 +165,23 @@ service cloud.firestore {
     match /app_errors/{document} {
       allow create: if request.auth != null;
       allow read: if isAdmin();
+    }
+
+    // In-app notifications (chat messages, a psychologist's comments/
+    // feedback, task/activity assignment and completion, a new self-service
+    // patient-psychologist link, a logged app error) -- see
+    // firebase/functions/notifications.js, the only writer. `read` is the
+    // one field a client may ever change, to mark a notification seen.
+    // The list-query filter and this rule both key on `recipientRef` --
+    // deliberately, so `list` reads (the notification feed itself) stay
+    // provable: see the note on `isAssignedPsychologist` above for what
+    // happens when a rule checks a field the query doesn't also filter on.
+    match /notifications/{document} {
+      allow read: if request.auth != null &&
+        resource.data.recipientRef == userRef(request.auth.uid);
+      allow update: if request.auth != null &&
+        resource.data.recipientRef == userRef(request.auth.uid) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
     }
 
     // Admin-managed catalog of tools/activities. Any signed-in user can
@@ -216,10 +276,22 @@ service cloud.firestore {
         (resource.data.patientRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
          resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid));
 
+      // One `get()` on the parent conversation, not two -- reused for both
+      // sides of the check instead of fetching the same document twice per
+      // message read. This `get()`'s argument is the `conversationId` path
+      // segment, constant for the whole query, not `resource.data` -- so,
+      // unlike the `psychologistRef` checks elsewhere in this file, it's
+      // safe for a `list`/`.snapshots()` query regardless of what the
+      // client's own query filters on.
+      function isConversationParticipant(conversationId) {
+        let conversation =
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data;
+        return conversation.patientRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
+          conversation.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid);
+      }
+
       match /messages/{messageId} {
-        allow read: if request.auth != null &&
-          (get(/databases/$(database)/documents/conversations/$(conversationId)).data.patientRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-           get(/databases/$(database)/documents/conversations/$(conversationId)).data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid));
+        allow read: if request.auth != null && isConversationParticipant(conversationId);
       }
     }
   }

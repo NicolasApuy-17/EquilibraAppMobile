@@ -1,6 +1,7 @@
 const admin = require("firebase-admin");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { notifyUser, notifyAdmins, displayNameFor } = require("./notifications");
 
 // Same pattern the client uses in lib/utils/validators.dart — kept in sync
 // by hand since this is server-side JS, not shared code with the Dart app.
@@ -208,10 +209,22 @@ exports.linkPsychologistByCode = onCall({ cors: true }, async (request) => {
     throw new HttpsError("not-found", "Ese código no corresponde a ningún psicólogo.");
   }
 
-  const conversationId = await linkPatientToPsychologist(
-    patientRef,
-    matches.docs[0].ref
-  );
+  const psychologistRef = matches.docs[0].ref;
+  const conversationId = await linkPatientToPsychologist(patientRef, psychologistRef);
+
+  // Self-service link, made without any admin action -- unlike
+  // `adminAssignPsychologist`, where the admin already knows.
+  const [patientName, psychologistName] = await Promise.all([
+    displayNameFor(request.auth.uid),
+    displayNameFor(psychologistRef.id),
+  ]);
+  await notifyAdmins({
+    type: "new_link",
+    title: "Nuevo vínculo paciente-psicólogo",
+    body: `${patientName} se vinculó con ${psychologistName} usando un código.`,
+    subjectRef: patientRef,
+  });
+
   return { conversationId };
 });
 
@@ -338,6 +351,103 @@ exports.adminDiagnosePatientLink = onCall({ cors: true }, async (request) => {
     .where("psychologistRef", "==", reconstructedRef)
     .get();
   result.matchCountUsingReconstructedRef = withReconstructedRef.size;
+
+  return result;
+});
+
+/**
+ * Admin-only, one-off maintenance: stamps `psychologistRef` onto existing
+ * `records`/`behavioral_records`/`tasks` documents that predate that field
+ * (see firestore.rules -- their read rule now compares `psychologistRef`
+ * directly instead of doing a cross-collection `get()`, which was found to
+ * make `list` queries silently return empty even for correctly-linked
+ * data). Safe to run repeatedly: only touches documents missing the field,
+ * and this is the Admin SDK so it bypasses the `create`-only validation
+ * that constrains the client. For each collection:
+ *  - `records`/`behavioral_records`: stamps the referenced patient's
+ *    *current* `psychologistRef` (skipped if that patient has none).
+ *  - `tasks`: a psychologist-assigned task (`createdByRef != userRef`)
+ *    stamps `createdByRef` (the assigning psychologist, unambiguous and
+ *    doesn't depend on who the patient is linked to *now*); a self-created
+ *    task stamps the patient's current `psychologistRef` like the other
+ *    two collections.
+ * Returns how many documents were updated per collection, plus how many
+ * were left alone because the patient has no psychologist.
+ */
+exports.adminBackfillPsychologistRefs = onCall({ cors: true }, async (request) => {
+  assertAuthenticated(request);
+  await assertIsAdmin(request.auth.uid);
+
+  const db = admin.firestore();
+  const userSnapCache = new Map();
+  async function currentPsychologistRefFor(userRef) {
+    if (!userRef) return null;
+    const key = userRef.path;
+    if (!userSnapCache.has(key)) {
+      const snap = await userRef.get();
+      userSnapCache.set(key, snap.exists ? snap.data().psychologistRef ?? null : null);
+    }
+    return userSnapCache.get(key);
+  }
+
+  const result = {
+    records: { updated: 0, skippedNoPsychologist: 0 },
+    behavioral_records: { updated: 0, skippedNoPsychologist: 0 },
+    tasks: { updated: 0, skippedNoPsychologist: 0 },
+  };
+
+  async function backfillPatientOwned(collectionName) {
+    const snap = await db.collection(collectionName).get();
+    let batch = db.batch();
+    let pending = 0;
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      if (data.psychologistRef) continue;
+      const psychologistRef = await currentPsychologistRefFor(data.userRef);
+      if (!psychologistRef) {
+        result[collectionName].skippedNoPsychologist++;
+        continue;
+      }
+      batch.update(doc.ref, { psychologistRef });
+      result[collectionName].updated++;
+      pending++;
+      if (pending === 400) {
+        await batch.commit();
+        batch = db.batch();
+        pending = 0;
+      }
+    }
+    if (pending > 0) await batch.commit();
+  }
+
+  await backfillPatientOwned("records");
+  await backfillPatientOwned("behavioral_records");
+
+  const tasksSnap = await db.collection("tasks").get();
+  let taskBatch = db.batch();
+  let taskPending = 0;
+  for (const doc of tasksSnap.docs) {
+    const data = doc.data();
+    if (data.psychologistRef) continue;
+    const isAssignedByPsychologist =
+      data.createdByRef && data.userRef && data.createdByRef.path !== data.userRef.path;
+    const psychologistRef = isAssignedByPsychologist
+      ? data.createdByRef
+      : await currentPsychologistRefFor(data.userRef);
+    if (!psychologistRef) {
+      result.tasks.skippedNoPsychologist++;
+      continue;
+    }
+    taskBatch.update(doc.ref, { psychologistRef });
+    result.tasks.updated++;
+    taskPending++;
+    if (taskPending === 400) {
+      await taskBatch.commit();
+      taskBatch = db.batch();
+      taskPending = 0;
+    }
+  }
+  if (taskPending > 0) await taskBatch.commit();
 
   return result;
 });
@@ -509,6 +619,20 @@ exports.sendConversationMessage = onCall({ cors: true }, async (request) => {
     { lastMessageText: text, lastMessageTime: now },
     { merge: true }
   );
+
+  const recipientRef =
+    conversation.patientRef?.path === callerRef.path
+      ? conversation.psychologistRef
+      : conversation.patientRef;
+  if (recipientRef) {
+    const senderName = await displayNameFor(request.auth.uid);
+    await notifyUser(recipientRef.id, {
+      type: "chat_message",
+      title: `Mensaje de ${senderName}`,
+      body: text,
+      conversationId,
+    });
+  }
 
   return { sent: true };
 });

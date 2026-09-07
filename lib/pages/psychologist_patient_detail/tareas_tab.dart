@@ -40,9 +40,21 @@ class _TareasTabState extends State<TareasTab> {
   // same reason `records`/`behavioral_records` had it too (see
   // registros_tab.dart, avances_tab.dart). Refreshed manually instead: on
   // pull-to-refresh, and after any action that could have changed the data.
+  //
+  // The query filters on BOTH `userRef` and `psychologistRef` -- not just
+  // `userRef` -- because of a separate, real Firestore restriction: for a
+  // `list` query, the security rule can only read `resource.data` fields
+  // that are *also* constrained by that query's own `where` clauses. The
+  // read rule here checks `psychologistRef`; if the query doesn't also
+  // filter on it, Firestore treats that field as undefined while proving
+  // the query safe and denies the whole thing outright (confirmed with the
+  // Firestore Rules emulator: dropping this second filter reproduces
+  // "Property psychologistRef is undefined on object" on every read).
+  // Multiple equality filters like this don't need a composite index.
   Future<List<TasksRecord>> _load() => queryTasksRecordOnce(
-        queryBuilder: (q) =>
-            q.where('userRef', isEqualTo: widget.patient.reference),
+        queryBuilder: (q) => q
+            .where('userRef', isEqualTo: widget.patient.reference)
+            .where('psychologistRef', isEqualTo: currentUserReference),
       );
 
   Future<void> _refresh() async {
@@ -469,6 +481,7 @@ class _AssignTaskSheetState extends State<_AssignTaskSheet> {
             dueDate: _dueDate,
             status: 'pendiente',
             userRef: widget.patient.reference,
+            psychologistRef: myRef,
             createdByRef: myRef,
             createdTime: DateTime.now(),
             assignedDate: DateTime.now(),

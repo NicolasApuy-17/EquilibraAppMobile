@@ -59,6 +59,17 @@ class BehavioralRecordsRecord extends FirestoreRecord {
   DocumentReference? get userRef => _userRef;
   bool hasUserRef() => _userRef != null;
 
+  // "psychologistRef" field. Denormalized copy of the patient's assigned
+  // psychologist at the moment this record was created, stamped by the
+  // client (see firestore.rules' `patientRecordPsychologistRefIsValid`) so
+  // the psychologist's read rule can compare it directly instead of doing a
+  // cross-collection `get()`, which was found to make `list` queries
+  // silently return empty. Absent on records created before this field
+  // existed, or by a patient with no psychologist yet.
+  DocumentReference? _psychologistRef;
+  DocumentReference? get psychologistRef => _psychologistRef;
+  bool hasPsychologistRef() => _psychologistRef != null;
+
   // "psychologistComment" field. Set only by the patient's assigned
   // psychologist (see firestore.rules); never written by the patient.
   String? _psychologistComment;
@@ -82,6 +93,8 @@ class BehavioralRecordsRecord extends FirestoreRecord {
         safeGet<DateTime?>(() => snapshotData['createdAt'] as DateTime?);
     _userRef = safeGet<DocumentReference?>(
         () => snapshotData['userRef'] as DocumentReference?);
+    _psychologistRef = safeGet<DocumentReference?>(
+        () => snapshotData['psychologistRef'] as DocumentReference?);
     _psychologistComment = safeGet<String?>(
         () => snapshotData['psychologistComment'] as String?);
     _psychologistCommentTime = safeGet<DateTime?>(() =>
@@ -136,6 +149,7 @@ Map<String, dynamic> createBehavioralRecordsRecordData({
   String? notes,
   DateTime? createdAt,
   DocumentReference? userRef,
+  DocumentReference? psychologistRef,
   String? psychologistComment,
   DateTime? psychologistCommentTime,
 }) {
@@ -148,6 +162,7 @@ Map<String, dynamic> createBehavioralRecordsRecordData({
       'notes': notes,
       'createdAt': createdAt,
       'userRef': userRef,
+      'psychologistRef': psychologistRef,
       'psychologistComment': psychologistComment,
       'psychologistCommentTime': psychologistCommentTime,
     }.withoutNulls,
@@ -169,6 +184,7 @@ class BehavioralRecordsRecordDocumentEquality
         e1?.notes == e2?.notes &&
         e1?.createdAt == e2?.createdAt &&
         e1?.userRef == e2?.userRef &&
+        e1?.psychologistRef == e2?.psychologistRef &&
         e1?.psychologistComment == e2?.psychologistComment &&
         e1?.psychologistCommentTime == e2?.psychologistCommentTime;
   }
@@ -182,6 +198,7 @@ class BehavioralRecordsRecordDocumentEquality
         e?.notes,
         e?.createdAt,
         e?.userRef,
+        e?.psychologistRef,
         e?.psychologistComment,
         e?.psychologistCommentTime,
       ]);

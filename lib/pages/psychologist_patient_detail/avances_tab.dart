@@ -1,3 +1,4 @@
+import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/utils/date_format_es.dart';
@@ -51,17 +52,36 @@ class _AvancesTabState extends State<AvancesTab> {
   // instant, then silently drops to empty with no error (see
   // registros_tab.dart for how this was confirmed). Refreshed manually
   // instead: on pull-to-refresh, and whenever the period filter changes.
+  //
+  // Each query also filters on `psychologistRef` (our own ref), not just
+  // the patient's `userRef`/`patientRef` -- a `list` query's security rule
+  // can only read `resource.data` fields that are *also* constrained by
+  // that query's own `where` clauses, and the read rule for these
+  // collections checks `psychologistRef`. Without this second filter,
+  // Firestore treats that field as undefined while proving the query safe
+  // and denies the whole read (confirmed with the Firestore Rules
+  // emulator -- see registros_tab.dart). Multiple equality filters like
+  // this don't need a composite index.
   Future<_AvancesData> _load() async {
     final patientRef = widget.patient.reference;
+    final myRef = currentUserReference;
     final results = await Future.wait([
       queryRecordsRecordOnce(
-          queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef)),
+          queryBuilder: (q) => q
+              .where('userRef', isEqualTo: patientRef)
+              .where('psychologistRef', isEqualTo: myRef)),
       queryBehavioralRecordsRecordOnce(
-          queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef)),
+          queryBuilder: (q) => q
+              .where('userRef', isEqualTo: patientRef)
+              .where('psychologistRef', isEqualTo: myRef)),
       queryTasksRecordOnce(
-          queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef)),
+          queryBuilder: (q) => q
+              .where('userRef', isEqualTo: patientRef)
+              .where('psychologistRef', isEqualTo: myRef)),
       queryActivityAssignmentsRecordOnce(
-          queryBuilder: (q) => q.where('patientRef', isEqualTo: patientRef)),
+          queryBuilder: (q) => q
+              .where('patientRef', isEqualTo: patientRef)
+              .where('psychologistRef', isEqualTo: myRef)),
     ]);
     return _AvancesData(
       records: results[0] as List<RecordsRecord>,

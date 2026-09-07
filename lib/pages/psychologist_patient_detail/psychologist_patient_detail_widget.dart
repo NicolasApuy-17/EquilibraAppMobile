@@ -1,7 +1,9 @@
 import '/backend/backend.dart';
+import '/components/tablet_bounded.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
+import '/index.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'resumen_tab.dart';
@@ -40,69 +42,90 @@ class PsychologistPatientDetailWidget extends StatelessWidget {
       child: Scaffold(
         backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
         body: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    FlutterFlowIconButton(
-                      borderRadius: 8.0,
-                      buttonSize: 40.0,
-                      fillColor: Colors.transparent,
-                      icon: Icon(
-                        Icons.arrow_back_rounded,
-                        color: FlutterFlowTheme.of(context).primaryText,
-                        size: 24.0,
+          child: TabletBounded(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      FlutterFlowIconButton(
+                        borderRadius: 8.0,
+                        buttonSize: 40.0,
+                        fillColor: Colors.transparent,
+                        icon: Icon(
+                          Icons.arrow_back_rounded,
+                          color: FlutterFlowTheme.of(context).primaryText,
+                          size: 24.0,
+                        ),
+                        onPressed: () => context.safePop(),
                       ),
-                      onPressed: () => context.safePop(),
-                    ),
-                    Expanded(
-                      child: Text(
-                        patient.displayName.isEmpty
-                            ? patient.email
-                            : patient.displayName,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: FlutterFlowTheme.of(context).titleLarge.override(
-                              font:
-                                  GoogleFonts.outfit(fontWeight: FontWeight.bold),
-                              color: FlutterFlowTheme.of(context).primaryText,
-                              letterSpacing: 0.0,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      Expanded(
+                        child: Text(
+                          patient.displayName.isEmpty
+                              ? patient.email
+                              : patient.displayName,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: FlutterFlowTheme.of(context)
+                              .titleLarge
+                              .override(
+                                font: GoogleFonts.outfit(
+                                    fontWeight: FontWeight.bold),
+                                color: FlutterFlowTheme.of(context).primaryText,
+                                letterSpacing: 0.0,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 40.0),
-                  ],
+                      FlutterFlowIconButton(
+                        borderRadius: 8.0,
+                        buttonSize: 40.0,
+                        fillColor: Colors.transparent,
+                        icon: Icon(
+                          Icons.forum_rounded,
+                          color: FlutterFlowTheme.of(context).primary,
+                          size: 24.0,
+                        ),
+                        // `conversationId` is always the patient's own uid --
+                        // both sides open the exact same conversation (see
+                        // PsychologistChatWidget's own doc comment).
+                        onPressed: () => context.pushNamed(
+                          PsychologistChatWidget.routeName,
+                          extra: patient.reference.id,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              TabBar(
-                isScrollable: true,
-                labelColor: FlutterFlowTheme.of(context).primary,
-                unselectedLabelColor: FlutterFlowTheme.of(context).secondaryText,
-                indicatorColor: FlutterFlowTheme.of(context).primary,
-                labelStyle: FlutterFlowTheme.of(context).bodyMedium.override(
-                      font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
-                    ),
-                tabs: _tabs.map((t) => Tab(text: t)).toList(),
-              ),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    ResumenTab(patient: patient),
-                    AvancesTab(patient: patient),
-                    RegistrosTab(patient: patient),
-                    SesionesTab(patient: patient),
-                    TareasTab(patient: patient),
-                    ActividadesTab(patient: patient),
-                  ],
+                TabBar(
+                  isScrollable: true,
+                  labelColor: FlutterFlowTheme.of(context).primary,
+                  unselectedLabelColor:
+                      FlutterFlowTheme.of(context).secondaryText,
+                  indicatorColor: FlutterFlowTheme.of(context).primary,
+                  labelStyle: FlutterFlowTheme.of(context).bodyMedium.override(
+                        font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                      ),
+                  tabs: _tabs.map((t) => Tab(text: t)).toList(),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      ResumenTab(patient: patient),
+                      AvancesTab(patient: patient),
+                      RegistrosTab(patient: patient),
+                      SesionesTab(patient: patient),
+                      TareasTab(patient: patient),
+                      ActividadesTab(patient: patient),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

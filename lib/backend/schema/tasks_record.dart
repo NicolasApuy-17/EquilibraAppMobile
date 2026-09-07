@@ -46,6 +46,19 @@ class TasksRecord extends FirestoreRecord {
   DocumentReference? get userRef => _userRef;
   bool hasUserRef() => _userRef != null;
 
+  // "psychologistRef" field. The patient's assigned psychologist at the
+  // moment this task was created -- for a self-created task, a
+  // denormalized copy of the patient's own `psychologistRef` (may be
+  // absent, if they have none); for a psychologist-assigned task, the
+  // assigning psychologist themself (== createdByRef). Lets the
+  // psychologist's read rule compare directly instead of doing a
+  // cross-collection `get()`, which was found to make `list` queries
+  // silently return empty (see firestore.rules). Absent on tasks created
+  // before this field existed.
+  DocumentReference? _psychologistRef;
+  DocumentReference? get psychologistRef => _psychologistRef;
+  bool hasPsychologistRef() => _psychologistRef != null;
+
   // "createdTime" field.
   DateTime? _createdTime;
   DateTime? get createdTime => _createdTime;
@@ -115,6 +128,7 @@ class TasksRecord extends FirestoreRecord {
     _dueDate = snapshotData['dueDate'] as DateTime?;
     _status = snapshotData['status'] as String?;
     _userRef = snapshotData['userRef'] as DocumentReference?;
+    _psychologistRef = snapshotData['psychologistRef'] as DocumentReference?;
     _createdTime = snapshotData['createdTime'] as DateTime?;
     _createdByRef = snapshotData['createdByRef'] as DocumentReference?;
     _assignedDate = snapshotData['assignedDate'] as DateTime?;
@@ -168,6 +182,7 @@ Map<String, dynamic> createTasksRecordData({
   DateTime? dueDate,
   String? status,
   DocumentReference? userRef,
+  DocumentReference? psychologistRef,
   DateTime? createdTime,
   DocumentReference? createdByRef,
   DateTime? assignedDate,
@@ -187,6 +202,7 @@ Map<String, dynamic> createTasksRecordData({
       'dueDate': dueDate,
       'status': status,
       'userRef': userRef,
+      'psychologistRef': psychologistRef,
       'createdTime': createdTime,
       'createdByRef': createdByRef,
       'assignedDate': assignedDate,
@@ -214,6 +230,7 @@ class TasksRecordDocumentEquality implements Equality<TasksRecord> {
         e1?.dueDate == e2?.dueDate &&
         e1?.status == e2?.status &&
         e1?.userRef == e2?.userRef &&
+        e1?.psychologistRef == e2?.psychologistRef &&
         e1?.createdTime == e2?.createdTime &&
         e1?.createdByRef == e2?.createdByRef &&
         e1?.assignedDate == e2?.assignedDate &&
@@ -234,6 +251,7 @@ class TasksRecordDocumentEquality implements Equality<TasksRecord> {
         e?.dueDate,
         e?.status,
         e?.userRef,
+        e?.psychologistRef,
         e?.createdTime,
         e?.createdByRef,
         e?.assignedDate,

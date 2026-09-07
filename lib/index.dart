@@ -47,3 +47,5 @@ export '/pages/link_psychologist/link_psychologist_widget.dart'
     show LinkPsychologistWidget;
 export '/pages/psychologist_chat/psychologist_chat_widget.dart'
     show PsychologistChatWidget;
+export '/pages/notifications/notifications_widget.dart'
+    show NotificationsWidget;

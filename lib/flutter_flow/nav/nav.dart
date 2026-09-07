@@ -263,8 +263,20 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           path: PsychologistChatWidget.routePath,
           requireAuth: true,
           builder: (context, params) => PsychologistChatWidget(
-            conversationId: params.state.extra as String,
+            // A plain `as String` here would crash on any caller mistake
+            // (extra omitted or of the wrong type) instead of showing the
+            // widget's own "couldn't open this conversation" state -- see
+            // the `extraMap` cast bug this same pattern already caused
+            // elsewhere in this file.
+            conversationId:
+                params.state.extra is String ? params.state.extra as String : '',
           ),
+        ),
+        FFRoute(
+          name: NotificationsWidget.routeName,
+          path: NotificationsWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => NotificationsWidget(),
         ),
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
     );

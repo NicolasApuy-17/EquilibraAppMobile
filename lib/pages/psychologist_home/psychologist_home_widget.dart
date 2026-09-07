@@ -1,5 +1,7 @@
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
+import '/components/notification_bell_button.dart';
+import '/components/tablet_bounded.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/index.dart';
@@ -28,7 +30,8 @@ Future<List<T>> _fetchPerPatient<T>(
       final snap = await query(ref);
       return snap.docs.map(fromSnapshot).toList();
     } catch (e, stackTrace) {
-      logAppError(context: '$context (${ref.id})', error: e, stackTrace: stackTrace);
+      logAppError(
+          context: '$context (${ref.id})', error: e, stackTrace: stackTrace);
       return <T>[];
     }
   }));
@@ -87,8 +90,7 @@ class PsychologistHomeWidget extends StatefulWidget {
   static String routePath = '/psychologistHome';
 
   @override
-  State<PsychologistHomeWidget> createState() =>
-      _PsychologistHomeWidgetState();
+  State<PsychologistHomeWidget> createState() => _PsychologistHomeWidgetState();
 }
 
 class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
@@ -158,26 +160,44 @@ class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
     // possibly return satisfies the rule, and it can't prove that for a
     // multi-value `whereIn` when the rule needs a `get()` (like
     // `isAssignedPsychologist` does here) to decide each document. A
-    // single-value `==` query it *can* prove, which is exactly what the
-    // per-patient detail tabs already do successfully. Each collection's
-    // fetch is wrapped so one patient's (or one collection's) failure
-    // doesn't blank out data that did load correctly.
+    // single-value `==` query it *can* prove -- but only for fields the
+    // rule itself checks. `records`/`behavioral_records`/`tasks` are
+    // patient-owned, so a `userRef == ref` filter alone isn't enough: the
+    // read rule also checks `psychologistRef`, and for a `list` query
+    // Firestore can only read `resource.data` fields that are *also*
+    // constrained by the query's own `where` clauses -- any field outside
+    // that (like `psychologistRef` here, if left unfiltered) reads as
+    // undefined while Firestore proves the query safe, and the whole read
+    // is denied (confirmed with the Firestore Rules emulator -- see
+    // registros_tab.dart). Hence the second filter below on every one of
+    // these per-patient queries; multiple equality filters like this don't
+    // need a composite index. Each collection's fetch is wrapped so one
+    // patient's (or one collection's) failure doesn't blank out data that
+    // did load correctly.
     final records = await _fetchPerPatient(
       patientRefs,
-      (ref) => RecordsRecord.collection.where('userRef', isEqualTo: ref).get(),
+      (ref) => RecordsRecord.collection
+          .where('userRef', isEqualTo: ref)
+          .where('psychologistRef', isEqualTo: myRef)
+          .get(),
       RecordsRecord.fromSnapshot,
       context: 'dashboard records',
     );
     final behavioralRecords = await _fetchPerPatient(
       patientRefs,
-      (ref) =>
-          BehavioralRecordsRecord.collection.where('userRef', isEqualTo: ref).get(),
+      (ref) => BehavioralRecordsRecord.collection
+          .where('userRef', isEqualTo: ref)
+          .where('psychologistRef', isEqualTo: myRef)
+          .get(),
       BehavioralRecordsRecord.fromSnapshot,
       context: 'dashboard behavioral records',
     );
     final tasks = await _fetchPerPatient(
       patientRefs,
-      (ref) => TasksRecord.collection.where('userRef', isEqualTo: ref).get(),
+      (ref) => TasksRecord.collection
+          .where('userRef', isEqualTo: ref)
+          .where('psychologistRef', isEqualTo: myRef)
+          .get(),
       TasksRecord.fromSnapshot,
       context: 'dashboard tasks',
     );
@@ -191,9 +211,11 @@ class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
       final sessionsSnap = await SessionsRecord.collection
           .where('psychologistRef', isEqualTo: myRef)
           .get();
-      sessions = sessionsSnap.docs.map((d) => SessionsRecord.fromSnapshot(d)).toList();
+      sessions =
+          sessionsSnap.docs.map((d) => SessionsRecord.fromSnapshot(d)).toList();
     } catch (e, stackTrace) {
-      logAppError(context: 'dashboard sessions', error: e, stackTrace: stackTrace);
+      logAppError(
+          context: 'dashboard sessions', error: e, stackTrace: stackTrace);
       sessions = [];
     }
 
@@ -208,9 +230,9 @@ class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
       for (final r in behavioralThisWeek) r.userRef?.id ?? '',
     }..remove('');
 
-    final sortedRecords = [...records]
-      ..sort((a, b) =>
-          (b.timestamp ?? DateTime(2000)).compareTo(a.timestamp ?? DateTime(2000)));
+    final sortedRecords = [...records]..sort((a, b) =>
+        (b.timestamp ?? DateTime(2000))
+            .compareTo(a.timestamp ?? DateTime(2000)));
     final recentRecords = sortedRecords
         .take(5)
         .where((r) => patientsById.containsKey(r.userRef?.id))
@@ -239,7 +261,9 @@ class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
       pendingTasksByPatient[id] = (pendingTasksByPatient[id] ?? 0) + 1;
     }
 
-    final recentlyCompletedTasks = tasks.where((t) => t.status == 'completada').toList()
+    final recentlyCompletedTasks = tasks
+        .where((t) => t.status == 'completada')
+        .toList()
       ..sort((a, b) => (b.completedTime ?? b.createdTime ?? DateTime(2000))
           .compareTo(a.completedTime ?? a.createdTime ?? DateTime(2000)));
 
@@ -257,12 +281,15 @@ class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
     }
     final upcomingSessions = <_UpcomingSession>[];
     sessionsByPatient.forEach((patientId, patientSessions) {
-      patientSessions.sort((a, b) =>
-          (b.sessionDate ?? DateTime(2000)).compareTo(a.sessionDate ?? DateTime(2000)));
+      patientSessions.sort((a, b) => (b.sessionDate ?? DateTime(2000))
+          .compareTo(a.sessionDate ?? DateTime(2000)));
       final nextDate = patientSessions.first.nextSessionDate;
       final patient = patientsById[patientId];
-      if (nextDate != null && patient != null && !nextDate.isBefore(todayDateOnly)) {
-        upcomingSessions.add(_UpcomingSession(patient: patient, date: nextDate));
+      if (nextDate != null &&
+          patient != null &&
+          !nextDate.isBefore(todayDateOnly)) {
+        upcomingSessions
+            .add(_UpcomingSession(patient: patient, date: nextDate));
       }
     });
     upcomingSessions.sort((a, b) => a.date.compareTo(b.date));
@@ -319,199 +346,211 @@ class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
     return Scaffold(
       backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 12.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Text(
-                      currentUserDisplayName.isEmpty
-                          ? 'Panel del psicólogo'
-                          : 'Hola, ${currentUserDisplayName.split(' ').first}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: FlutterFlowTheme.of(context).titleLarge.override(
-                            font:
-                                GoogleFonts.outfit(fontWeight: FontWeight.bold),
-                            color: FlutterFlowTheme.of(context).primaryText,
-                            letterSpacing: 0.0,
-                            fontWeight: FontWeight.bold,
-                          ),
+        child: TabletBounded(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 12.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        currentUserDisplayName.isEmpty
+                            ? 'Panel del psicólogo'
+                            : 'Hola, ${currentUserDisplayName.split(' ').first}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: FlutterFlowTheme.of(context).titleLarge.override(
+                              font: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.bold),
+                              color: FlutterFlowTheme.of(context).primaryText,
+                              letterSpacing: 0.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: _confirmSignOut,
-                    icon: Icon(
-                      Icons.logout_rounded,
-                      color: FlutterFlowTheme.of(context).primaryText,
+                    const NotificationBellButton(),
+                    IconButton(
+                      onPressed: _confirmSignOut,
+                      icon: Icon(
+                        Icons.logout_rounded,
+                        color: FlutterFlowTheme.of(context).primaryText,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: myRef == null
-                  ? const SizedBox.shrink()
-                  : RefreshIndicator(
-                      onRefresh: _refresh,
-                      child: ListView(
-                        padding: const EdgeInsetsDirectional.fromSTEB(
-                            24.0, 0.0, 24.0, 24.0),
-                        children: [
-                          FutureBuilder<_DashboardData>(
-                            future: _dashboardFuture,
-                            builder: (context, snapshot) {
-                              // `_loadDashboard` never completes with an
-                              // error (it catches everything internally),
-                              // but this still guards against an eternal
-                              // spinner if that ever stops being true.
-                              if (snapshot.connectionState == ConnectionState.done &&
-                                  !snapshot.hasData) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                                  child: Text(
-                                    'No se pudo cargar el resumen. Desliza hacia abajo para reintentar.',
-                                    style: FlutterFlowTheme.of(context).bodyMedium.override(
-                                          font: GoogleFonts.outfit(),
-                                          color: FlutterFlowTheme.of(context).error,
-                                          letterSpacing: 0.0,
-                                        ),
+              Expanded(
+                child: myRef == null
+                    ? const SizedBox.shrink()
+                    : RefreshIndicator(
+                        onRefresh: _refresh,
+                        child: ListView(
+                          padding: const EdgeInsetsDirectional.fromSTEB(
+                              24.0, 0.0, 24.0, 24.0),
+                          children: [
+                            FutureBuilder<_DashboardData>(
+                              future: _dashboardFuture,
+                              builder: (context, snapshot) {
+                                // `_loadDashboard` never completes with an
+                                // error (it catches everything internally),
+                                // but this still guards against an eternal
+                                // spinner if that ever stops being true.
+                                if (snapshot.connectionState ==
+                                        ConnectionState.done &&
+                                    !snapshot.hasData) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16.0),
+                                    child: Text(
+                                      'No se pudo cargar el resumen. Desliza hacia abajo para reintentar.',
+                                      style: FlutterFlowTheme.of(context)
+                                          .bodyMedium
+                                          .override(
+                                            font: GoogleFonts.outfit(),
+                                            color: FlutterFlowTheme.of(context)
+                                                .error,
+                                            letterSpacing: 0.0,
+                                          ),
+                                    ),
+                                  );
+                                }
+                                if (!snapshot.hasData) {
+                                  return const Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 32.0),
+                                    child: Center(
+                                        child: CircularProgressIndicator()),
+                                  );
+                                }
+                                return _DashboardSection(data: snapshot.data!);
+                              },
+                            ),
+                            const SizedBox(height: 24.0),
+                            Text(
+                              'Mis consultantes',
+                              style: FlutterFlowTheme.of(context)
+                                  .titleSmall
+                                  .override(
+                                    font: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.bold),
+                                    color: FlutterFlowTheme.of(context)
+                                        .primaryText,
+                                    letterSpacing: 0.0,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                );
-                              }
-                              if (!snapshot.hasData) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 32.0),
-                                  child: Center(
-                                      child: CircularProgressIndicator()),
-                                );
-                              }
-                              return _DashboardSection(data: snapshot.data!);
-                            },
-                          ),
-                          const SizedBox(height: 24.0),
-                          Text(
-                            'Mis consultantes',
-                            style: FlutterFlowTheme.of(context)
-                                .titleSmall
-                                .override(
-                                  font: GoogleFonts.outfit(
-                                      fontWeight: FontWeight.bold),
-                                  color:
-                                      FlutterFlowTheme.of(context).primaryText,
-                                  letterSpacing: 0.0,
-                                  fontWeight: FontWeight.bold,
+                            ),
+                            const SizedBox(height: 12.0),
+                            TextField(
+                              controller: _searchController,
+                              onChanged: (value) => setState(
+                                  () => _query = value.trim().toLowerCase()),
+                              decoration: InputDecoration(
+                                hintText: 'Buscar consultante por nombre...',
+                                prefixIcon: const Icon(Icons.search_rounded),
+                                filled: true,
+                                fillColor: FlutterFlowTheme.of(context)
+                                    .secondaryBackground,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14.0),
+                                  borderSide: BorderSide.none,
                                 ),
-                          ),
-                          const SizedBox(height: 12.0),
-                          TextField(
-                            controller: _searchController,
-                            onChanged: (value) => setState(
-                                () => _query = value.trim().toLowerCase()),
-                            decoration: InputDecoration(
-                              hintText: 'Buscar consultante por nombre...',
-                              prefixIcon: const Icon(Icons.search_rounded),
-                              filled: true,
-                              fillColor:
-                                  FlutterFlowTheme.of(context).secondaryBackground,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14.0),
-                                borderSide: BorderSide.none,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 12.0),
-                          StreamBuilder<List<UsersRecord>>(
-                            stream: queryUsersRecord(
-                              queryBuilder: (usersRecord) => usersRecord
-                                  .where('role', isEqualTo: 'paciente')
-                                  .where('psychologistRef', isEqualTo: myRef),
-                            ),
-                            builder: (context, snapshot) {
-                              if (snapshot.hasError) {
-                                return Text(
-                                  'No se pudieron cargar tus consultantes.',
-                                  style: FlutterFlowTheme.of(context)
-                                      .bodyMedium
-                                      .override(
-                                        font: GoogleFonts.outfit(),
-                                        color:
-                                            FlutterFlowTheme.of(context).error,
-                                        letterSpacing: 0.0,
-                                      ),
-                                );
-                              }
-                              if (!snapshot.hasData) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 24.0),
-                                  child: Center(
-                                      child: CircularProgressIndicator()),
-                                );
-                              }
-                              final patients = snapshot.data!.where((p) {
-                                if (_query.isEmpty) return true;
-                                return p.displayName
-                                        .toLowerCase()
-                                        .contains(_query) ||
-                                    p.email.toLowerCase().contains(_query);
-                              }).toList();
-                              if (patients.isEmpty) {
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 24.0),
-                                  child: Text(
-                                    snapshot.data!.isEmpty
-                                        ? 'Aún no tienes consultantes vinculados.'
-                                        : 'No se encontraron consultantes.',
-                                    textAlign: TextAlign.center,
+                            const SizedBox(height: 12.0),
+                            StreamBuilder<List<UsersRecord>>(
+                              stream: queryUsersRecord(
+                                queryBuilder: (usersRecord) => usersRecord
+                                    .where('role', isEqualTo: 'paciente')
+                                    .where('psychologistRef', isEqualTo: myRef),
+                              ),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasError) {
+                                  return Text(
+                                    'No se pudieron cargar tus consultantes.',
                                     style: FlutterFlowTheme.of(context)
                                         .bodyMedium
                                         .override(
                                           font: GoogleFonts.outfit(),
                                           color: FlutterFlowTheme.of(context)
-                                              .secondaryText,
+                                              .error,
                                           letterSpacing: 0.0,
                                         ),
-                                  ),
-                                );
-                              }
-                              return FutureBuilder<_DashboardData>(
-                                future: _dashboardFuture,
-                                builder: (context, dashboardSnapshot) {
-                                  final pendingByPatient = dashboardSnapshot
-                                          .data?.pendingTasksByPatient ??
-                                      const <String, int>{};
-                                  final nextSessionByPatient = {
-                                    for (final upcoming in dashboardSnapshot
-                                            .data?.upcomingSessions ??
-                                        const <_UpcomingSession>[])
-                                      upcoming.patient.reference.id: upcoming.date,
-                                  };
-                                  return Column(
-                                    children: patients
-                                        .map((patient) => _PatientCard(
-                                              patient: patient,
-                                              pendingTasks: pendingByPatient[
-                                                      patient.reference.id] ??
-                                                  0,
-                                              nextSessionDate: nextSessionByPatient[
-                                                  patient.reference.id],
-                                            ))
-                                        .toList(),
                                   );
-                                },
-                              );
-                            },
-                          ),
-                        ],
+                                }
+                                if (!snapshot.hasData) {
+                                  return const Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(vertical: 24.0),
+                                    child: Center(
+                                        child: CircularProgressIndicator()),
+                                  );
+                                }
+                                final patients = snapshot.data!.where((p) {
+                                  if (_query.isEmpty) return true;
+                                  return p.displayName
+                                          .toLowerCase()
+                                          .contains(_query) ||
+                                      p.email.toLowerCase().contains(_query);
+                                }).toList();
+                                if (patients.isEmpty) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 24.0),
+                                    child: Text(
+                                      snapshot.data!.isEmpty
+                                          ? 'Aún no tienes consultantes vinculados.'
+                                          : 'No se encontraron consultantes.',
+                                      textAlign: TextAlign.center,
+                                      style: FlutterFlowTheme.of(context)
+                                          .bodyMedium
+                                          .override(
+                                            font: GoogleFonts.outfit(),
+                                            color: FlutterFlowTheme.of(context)
+                                                .secondaryText,
+                                            letterSpacing: 0.0,
+                                          ),
+                                    ),
+                                  );
+                                }
+                                return FutureBuilder<_DashboardData>(
+                                  future: _dashboardFuture,
+                                  builder: (context, dashboardSnapshot) {
+                                    final pendingByPatient = dashboardSnapshot
+                                            .data?.pendingTasksByPatient ??
+                                        const <String, int>{};
+                                    final nextSessionByPatient = {
+                                      for (final upcoming in dashboardSnapshot
+                                              .data?.upcomingSessions ??
+                                          const <_UpcomingSession>[])
+                                        upcoming.patient.reference.id:
+                                            upcoming.date,
+                                    };
+                                    return Column(
+                                      children: patients
+                                          .map((patient) => _PatientCard(
+                                                patient: patient,
+                                                pendingTasks: pendingByPatient[
+                                                        patient.reference.id] ??
+                                                    0,
+                                                nextSessionDate:
+                                                    nextSessionByPatient[
+                                                        patient.reference.id],
+                                              ))
+                                          .toList(),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -574,7 +613,8 @@ class _DashboardSection extends StatelessWidget {
             title: 'Alertas importantes',
             icon: Icons.warning_amber_rounded,
             iconColor: FlutterFlowTheme.of(context).error,
-            children: data.alerts.map((entry) => _AlertRow(entry: entry)).toList(),
+            children:
+                data.alerts.map((entry) => _AlertRow(entry: entry)).toList(),
           ),
           const SizedBox(height: 16.0),
         ],
@@ -582,8 +622,9 @@ class _DashboardSection extends StatelessWidget {
           title: 'Registros emocionales recientes',
           icon: Icons.mood_rounded,
           emptyText: 'Sin registros emocionales recientes.',
-          children:
-              data.recentRecords.map((entry) => _RecentRecordRow(entry: entry)).toList(),
+          children: data.recentRecords
+              .map((entry) => _RecentRecordRow(entry: entry))
+              .toList(),
         ),
         const SizedBox(height: 16.0),
         _DashboardCard(
@@ -591,7 +632,8 @@ class _DashboardSection extends StatelessWidget {
           icon: Icons.task_alt_rounded,
           emptyText: 'Sin tareas cumplidas todavía.',
           children: data.recentlyCompletedTasks
-              .map((task) => _SimpleRow(title: task.title, subtitle: 'Cumplida'))
+              .map(
+                  (task) => _SimpleRow(title: task.title, subtitle: 'Cumplida'))
               .toList(),
         ),
         const SizedBox(height: 16.0),
@@ -702,12 +744,15 @@ class _StatTile extends StatelessWidget {
             ? theme.error.withValues(alpha: 0.08)
             : theme.secondaryBackground,
         borderRadius: BorderRadius.circular(16.0),
-        border: highlight ? Border.all(color: theme.error.withValues(alpha: 0.3)) : null,
+        border: highlight
+            ? Border.all(color: theme.error.withValues(alpha: 0.3))
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: highlight ? theme.error : theme.primary, size: 22.0),
+          Icon(icon,
+              color: highlight ? theme.error : theme.primary, size: 22.0),
           const SizedBox(height: 8.0),
           Text(
             value,
@@ -893,7 +938,8 @@ class _InitialsAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (photoUrl.isNotEmpty) {
-      return CircleAvatar(radius: 22.0, backgroundImage: NetworkImage(photoUrl));
+      return CircleAvatar(
+          radius: 22.0, backgroundImage: NetworkImage(photoUrl));
     }
     final trimmed = name.trim();
     final initials = trimmed.isEmpty
@@ -988,39 +1034,82 @@ class _PatientCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6.0),
-                      Row(
+                      // `Wrap`, not `Row`: on a narrow phone these two
+                      // icon+text pairs (especially a long formatted date)
+                      // don't fit on one line and would overflow -- `Wrap`
+                      // drops the second pair to its own line instead,
+                      // while a tablet's extra width just keeps them
+                      // side by side.
+                      Wrap(
+                        spacing: 12.0,
+                        runSpacing: 4.0,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Icon(Icons.pending_actions_rounded,
-                              size: 14.0, color: theme.secondaryText),
-                          const SizedBox(width: 4.0),
-                          Text(
-                            '$pendingTasks tareas pendientes',
-                            style: theme.bodySmall.override(
-                              font: GoogleFonts.outfit(),
-                              color: theme.secondaryText,
-                              letterSpacing: 0.0,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.pending_actions_rounded,
+                                  size: 14.0, color: theme.secondaryText),
+                              const SizedBox(width: 4.0),
+                              Text(
+                                '$pendingTasks tareas pendientes',
+                                style: theme.bodySmall.override(
+                                  font: GoogleFonts.outfit(),
+                                  color: theme.secondaryText,
+                                  letterSpacing: 0.0,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12.0),
-                          Icon(Icons.event_rounded,
-                              size: 14.0, color: theme.secondaryText),
-                          const SizedBox(width: 4.0),
-                          Text(
-                            nextSessionDate != null
-                                ? 'Próxima sesión: ${formatDateEs(nextSessionDate!)}'
-                                : 'Próxima sesión: —',
-                            style: theme.bodySmall.override(
-                              font: GoogleFonts.outfit(),
-                              color: theme.secondaryText,
-                              letterSpacing: 0.0,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.event_rounded,
+                                  size: 14.0, color: theme.secondaryText),
+                              const SizedBox(width: 4.0),
+                              Text(
+                                nextSessionDate != null
+                                    ? 'Próxima sesión: ${formatDateEs(nextSessionDate!)}'
+                                    : 'Próxima sesión: —',
+                                style: theme.bodySmall.override(
+                                  font: GoogleFonts.outfit(),
+                                  color: theme.secondaryText,
+                                  letterSpacing: 0.0,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded, color: theme.secondaryText),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      borderRadius: BorderRadius.circular(20.0),
+                      // `conversationId` is always the patient's own uid --
+                      // both sides open the exact same conversation (see
+                      // PsychologistChatWidget's own doc comment). A
+                      // separate tap target from the card itself, so
+                      // opening the chat doesn't require going through the
+                      // full patient detail screen first.
+                      onTap: () => context.pushNamed(
+                        PsychologistChatWidget.routeName,
+                        extra: patient.reference.id,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(Icons.forum_rounded,
+                            size: 20.0, color: theme.primary),
+                      ),
+                    ),
+                    const SizedBox(height: 4.0),
+                    Icon(Icons.chevron_right_rounded,
+                        color: theme.secondaryText),
+                  ],
+                ),
               ],
             ),
           ),

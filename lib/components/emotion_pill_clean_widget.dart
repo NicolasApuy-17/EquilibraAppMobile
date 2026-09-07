@@ -48,58 +48,61 @@ class _EmotionPillCleanWidgetState extends State<EmotionPillCleanWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: AlignmentDirectional(0.0, 0.0),
-      child: InkWell(
-        splashColor: Colors.transparent,
-        focusColor: Colors.transparent,
-        hoverColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        onTap: () async {
-          await widget.onTap?.call();
-        },
-        child: Container(
-          constraints: BoxConstraints(minWidth: 64.0),
-          height: 34.0,
-          padding: EdgeInsetsDirectional.fromSTEB(8.0, 0.0, 8.0, 0.0),
-          decoration: BoxDecoration(
-            color: widget!.isSelected
-                ? FlutterFlowTheme.of(context).primary
-                : FlutterFlowTheme.of(context).tertiary,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20.0),
-              topRight: Radius.circular(20.0),
-              bottomLeft: Radius.circular(20.0),
-              bottomRight: Radius.circular(20.0),
-            ),
-            border: Border.all(
-              color: Color(0xFFD9DEE7),
-            ),
+    // No outer `Align` here (unlike the original version of this widget):
+    // an `Align` at the root, sitting inside a `Wrap` via a plain
+    // `Container`/`Provider` chain that imposes no width of its own, forced
+    // every pill onto its own line instead of flowing left-to-right like
+    // `BehaviorChipWidget` (which has no such wrapper and lays out
+    // correctly) -- matching that widget's plain `InkWell` root fixes it.
+    return InkWell(
+      splashColor: Colors.transparent,
+      focusColor: Colors.transparent,
+      hoverColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      onTap: () async {
+        await widget.onTap?.call();
+      },
+      child: Container(
+        width: 78.0,
+        height: 34.0,
+        alignment: Alignment.center,
+        padding: EdgeInsetsDirectional.fromSTEB(4.0, 0.0, 4.0, 0.0),
+        decoration: BoxDecoration(
+          color: widget!.isSelected
+              ? FlutterFlowTheme.of(context).primary
+              : FlutterFlowTheme.of(context).tertiary,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20.0),
+            topRight: Radius.circular(20.0),
+            bottomLeft: Radius.circular(20.0),
+            bottomRight: Radius.circular(20.0),
           ),
-          child: Align(
-            alignment: AlignmentDirectional(0.0, 0.0),
-            child: Text(
-              widget!.label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.visible,
-              style: FlutterFlowTheme.of(context).bodyMedium.override(
-                    font: GoogleFonts.outfit(
-                      fontWeight: FontWeight.w500,
-                      fontStyle:
-                          FlutterFlowTheme.of(context).bodyMedium.fontStyle,
-                    ),
-                    color: widget!.isSelected
-                        ? FlutterFlowTheme.of(context).tertiary
-                        : Color(0xFF2D3440),
-                    fontSize: 12.5,
-                    letterSpacing: 0.0,
+          border: Border.all(
+            color: Color(0xFFD9DEE7),
+          ),
+        ),
+        child: Align(
+          alignment: AlignmentDirectional(0.0, 0.0),
+          child: Text(
+            widget!.label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: FlutterFlowTheme.of(context).bodyMedium.override(
+                  font: GoogleFonts.outfit(
                     fontWeight: FontWeight.w500,
                     fontStyle:
                         FlutterFlowTheme.of(context).bodyMedium.fontStyle,
                   ),
-            ),
+                  color: widget!.isSelected
+                      ? FlutterFlowTheme.of(context).tertiary
+                      : Color(0xFF2D3440),
+                  fontSize: 11.5,
+                  letterSpacing: 0.0,
+                  fontWeight: FontWeight.w500,
+                  fontStyle: FlutterFlowTheme.of(context).bodyMedium.fontStyle,
+                ),
           ),
         ),
       ),

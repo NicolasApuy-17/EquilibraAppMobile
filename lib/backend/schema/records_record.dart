@@ -46,6 +46,17 @@ class RecordsRecord extends FirestoreRecord {
   DocumentReference? get userRef => _userRef;
   bool hasUserRef() => _userRef != null;
 
+  // "psychologistRef" field. Denormalized copy of the patient's assigned
+  // psychologist at the moment this record was created, stamped by the
+  // client (see firestore.rules' `patientRecordPsychologistRefIsValid`) so
+  // the psychologist's read rule can compare it directly instead of doing a
+  // cross-collection `get()`, which was found to make `list` queries
+  // silently return empty. Absent on records created before this field
+  // existed, or by a patient with no psychologist yet.
+  DocumentReference? _psychologistRef;
+  DocumentReference? get psychologistRef => _psychologistRef;
+  bool hasPsychologistRef() => _psychologistRef != null;
+
   // "psychologistComment" field. Set only by the patient's assigned
   // psychologist (see firestore.rules); never written by the patient.
   String? _psychologistComment;
@@ -73,6 +84,8 @@ class RecordsRecord extends FirestoreRecord {
         safeGet<double?>(() => castToType<double>(snapshotData['intensity']));
     _userRef = safeGet<DocumentReference?>(
         () => snapshotData['userRef'] as DocumentReference?);
+    _psychologistRef = safeGet<DocumentReference?>(
+        () => snapshotData['psychologistRef'] as DocumentReference?);
     _psychologistComment = safeGet<String?>(
         () => snapshotData['psychologistComment'] as String?);
     _psychologistCommentTime = safeGet<DateTime?>(() =>
@@ -123,6 +136,7 @@ Map<String, dynamic> createRecordsRecordData({
   DateTime? timestamp,
   double? intensity,
   DocumentReference? userRef,
+  DocumentReference? psychologistRef,
   String? psychologistComment,
   DateTime? psychologistCommentTime,
 }) {
@@ -133,6 +147,7 @@ Map<String, dynamic> createRecordsRecordData({
       'timestamp': timestamp,
       'intensity': intensity,
       'userRef': userRef,
+      'psychologistRef': psychologistRef,
       'psychologistComment': psychologistComment,
       'psychologistCommentTime': psychologistCommentTime,
     }.withoutNulls,
@@ -153,6 +168,7 @@ class RecordsRecordDocumentEquality implements Equality<RecordsRecord> {
         e1?.timestamp == e2?.timestamp &&
         e1?.intensity == e2?.intensity &&
         e1?.userRef == e2?.userRef &&
+        e1?.psychologistRef == e2?.psychologistRef &&
         e1?.psychologistComment == e2?.psychologistComment &&
         e1?.psychologistCommentTime == e2?.psychologistCommentTime;
   }
@@ -165,6 +181,7 @@ class RecordsRecordDocumentEquality implements Equality<RecordsRecord> {
         e?.timestamp,
         e?.intensity,
         e?.userRef,
+        e?.psychologistRef,
         e?.psychologistComment,
         e?.psychologistCommentTime,
       ]);

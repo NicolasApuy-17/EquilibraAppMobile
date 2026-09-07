@@ -16,6 +16,7 @@ const {
   linkPsychologistByCode,
   adminAssignPsychologist,
   adminDiagnosePatientLink,
+  adminBackfillPsychologistRefs,
   setAccountActive,
   setUserRole,
   sendConversationMessage,
@@ -27,9 +28,23 @@ exports.createPsychologist = createPsychologist;
 exports.linkPsychologistByCode = linkPsychologistByCode;
 exports.adminAssignPsychologist = adminAssignPsychologist;
 exports.adminDiagnosePatientLink = adminDiagnosePatientLink;
+exports.adminBackfillPsychologistRefs = adminBackfillPsychologistRefs;
 exports.setAccountActive = setAccountActive;
 exports.setUserRole = setUserRole;
 exports.sendConversationMessage = sendConversationMessage;
 exports.onRecordActivity = onRecordActivity;
 exports.onBehavioralRecordActivity = onBehavioralRecordActivity;
 exports.onTaskActivity = onTaskActivity;
+
+const {
+  onRecordNotification,
+  onBehavioralRecordNotification,
+  onTaskNotification,
+  onActivityAssignmentNotification,
+  onAppErrorNotification,
+} = require("./notifications");
+exports.onRecordNotification = onRecordNotification;
+exports.onBehavioralRecordNotification = onBehavioralRecordNotification;
+exports.onTaskNotification = onTaskNotification;
+exports.onActivityAssignmentNotification = onActivityAssignmentNotification;
+exports.onAppErrorNotification = onAppErrorNotification;
