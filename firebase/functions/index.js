@@ -41,10 +41,12 @@ const {
   onBehavioralRecordNotification,
   onTaskNotification,
   onActivityAssignmentNotification,
+  onSessionRequestNotification,
   onAppErrorNotification,
 } = require("./notifications");
 exports.onRecordNotification = onRecordNotification;
 exports.onBehavioralRecordNotification = onBehavioralRecordNotification;
 exports.onTaskNotification = onTaskNotification;
 exports.onActivityAssignmentNotification = onActivityAssignmentNotification;
+exports.onSessionRequestNotification = onSessionRequestNotification;
 exports.onAppErrorNotification = onAppErrorNotification;

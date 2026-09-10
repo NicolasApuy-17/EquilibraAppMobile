@@ -27,6 +27,8 @@ class HomeScreenModel extends FlutterFlowModel<HomeScreenWidget> {
   late QuickActionModel quickActionModel1;
   // Model for QuickAction.
   late QuickActionModel quickActionModel2;
+  // Model for QuickAction.
+  late QuickActionModel quickActionModel3;
 
   @override
   void initState(BuildContext context) {
@@ -36,6 +38,7 @@ class HomeScreenModel extends FlutterFlowModel<HomeScreenWidget> {
     featureCardModel4 = createModel(context, () => FeatureCardModel());
     quickActionModel1 = createModel(context, () => QuickActionModel());
     quickActionModel2 = createModel(context, () => QuickActionModel());
+    quickActionModel3 = createModel(context, () => QuickActionModel());
   }
 
   @override
@@ -46,5 +49,6 @@ class HomeScreenModel extends FlutterFlowModel<HomeScreenWidget> {
     featureCardModel4.dispose();
     quickActionModel1.dispose();
     quickActionModel2.dispose();
+    quickActionModel3.dispose();
   }
 }

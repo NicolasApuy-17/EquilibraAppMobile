@@ -663,6 +663,46 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                               ),
                                             ),
                                           ),
+                                          InkWell(
+                                            splashColor: Colors.transparent,
+                                            focusColor: Colors.transparent,
+                                            hoverColor: Colors.transparent,
+                                            highlightColor: Colors.transparent,
+                                            onTap: () async {
+                                              // Same "link first" fallback
+                                              // as the chat quick action
+                                              // above: a patient without a
+                                              // psychologist yet can't
+                                              // request a session from one.
+                                              final psychologistRef =
+                                                  currentUserDocument
+                                                      ?.psychologistRef;
+                                              context.pushNamed(
+                                                psychologistRef == null
+                                                    ? LinkPsychologistWidget
+                                                        .routeName
+                                                    : ScheduleSessionWidget
+                                                        .routeName,
+                                              );
+                                            },
+                                            child: wrapWithModel(
+                                              model: _model.quickActionModel3,
+                                              updateCallback: () =>
+                                                  safeSetState(() {}),
+                                              child: QuickActionWidget(
+                                                target:
+                                                    'navigate(scheduleSession)',
+                                                icon: Icon(
+                                                  Icons.event_available_rounded,
+                                                  color: FlutterFlowTheme.of(
+                                                          context)
+                                                      .primary,
+                                                  size: 20.0,
+                                                ),
+                                                label: 'Programar sesión',
+                                              ),
+                                            ),
+                                          ),
                                         ].divide(SizedBox(height: 16.0)),
                                       ),
                                       Container(

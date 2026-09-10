@@ -30,6 +30,19 @@ service cloud.firestore {
         get(userRef(patientUid)).data.psychologistRef == userRef(request.auth.uid);
     }
 
+    // Same check, but takes the patient's reference directly instead of
+    // their uid -- required at `create` time on `tasks`/`sessions`/
+    // `activity_assignments` below. Extracting `.id` from a reference
+    // field on `request.resource.data` (the *proposed* write, as opposed
+    // to an already-committed `resource`) throws "Property id is
+    // undefined on object" -- confirmed with the Firestore Rules emulator
+    // (`request.resource.data.userRef.id` reproduced it exactly). Passing
+    // the reference straight to `get()` sidesteps `.id` entirely.
+    function isAssignedPsychologistByRef(patientRef) {
+      return request.auth != null &&
+        get(patientRef).data.psychologistRef == userRef(request.auth.uid);
+    }
+
     // The psychologist currently assigned to the caller (the patient),
     // or null if they don't have one -- a single-document `get()` on the
     // caller's own profile, safe to use even in `create` validation (see
@@ -119,7 +132,7 @@ service cloud.firestore {
         request.resource.data.createdByRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
         ((request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
           patientRecordPsychologistRefIsValid()) ||
-         (isAssignedPsychologist(request.resource.data.userRef.id) &&
+         (isAssignedPsychologistByRef(request.resource.data.userRef) &&
           request.resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid)));
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
@@ -145,9 +158,43 @@ service cloud.firestore {
     match /sessions/{document} {
       allow create: if request.auth != null &&
         request.resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
-        isAssignedPsychologist(request.resource.data.patientRef.id);
+        isAssignedPsychologistByRef(request.resource.data.patientRef);
       allow read, update, delete: if request.auth != null &&
         resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    // A patient's request to schedule a session with their assigned
+    // psychologist -- separate from `sessions` above (private clinical
+    // notes written about a session that already happened). The patient
+    // picks any date/time for now (no availability validation yet, see
+    // schedule_session_widget.dart); the psychologist then confirms or
+    // declines it from their "Sesiones" tab. `psychologistRef` is
+    // denormalized the same way as on `records`/`behavioral_records`/
+    // `tasks` above, for the same reason (list-query reads can't safely use
+    // `isAssignedPsychologist`).
+    match /session_requests/{document} {
+      allow create: if request.auth != null &&
+        request.resource.data.patientRef == userRef(request.auth.uid) &&
+        patientRecordPsychologistRefIsValid() &&
+        request.resource.data.status == 'pendiente';
+      allow read: if request.auth != null &&
+        (resource.data.patientRef == userRef(request.auth.uid) ||
+         resource.data.get('psychologistRef', null) == userRef(request.auth.uid) ||
+         isAdmin());
+      // The patient may only cancel their own still-pending request; the
+      // assigned psychologist may only confirm or decline a pending one.
+      allow update: if request.auth != null &&
+        ((resource.data.patientRef == userRef(request.auth.uid) &&
+          resource.data.status == 'pendiente' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+          request.resource.data.status == 'cancelada') ||
+         (resource.data.get('psychologistRef', null) == userRef(request.auth.uid) &&
+          resource.data.status == 'pendiente' &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'respondedAt', 'psychologistNote']) &&
+          (request.resource.data.status == 'confirmada' ||
+           request.resource.data.status == 'rechazada')));
+      allow delete: if false;
     }
 
     // One free-text private note per patient, written by their assigned
@@ -199,7 +246,7 @@ service cloud.firestore {
     match /activity_assignments/{document} {
       allow create: if request.auth != null &&
         request.resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
-        isAssignedPsychologist(request.resource.data.patientRef.id);
+        isAssignedPsychologistByRef(request.resource.data.patientRef);
       allow read: if request.auth != null &&
         (resource.data.patientRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
          resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid) ||

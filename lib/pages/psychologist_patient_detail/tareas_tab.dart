@@ -2,6 +2,7 @@ import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/utils/date_format_es.dart';
+import '/utils/error_logging.dart';
 import '/utils/error_messages.dart';
 import '/utils/task_status.dart';
 import '/utils/validators.dart';
@@ -59,7 +60,14 @@ class _TareasTabState extends State<TareasTab> {
 
   Future<void> _refresh() async {
     final future = _load();
-    setState(() => _future = future);
+    // Not `setState(() => _future = future)`: an assignment expression
+    // evaluates to the assigned value, so that arrow closure "returns" the
+    // Future itself -- which setState's debug-mode check rejects outright
+    // ("setState() callback argument returned a Future"). A block body
+    // has no return value.
+    setState(() {
+      _future = future;
+    });
     await future;
   }
 
@@ -489,7 +497,12 @@ class _AssignTaskSheetState extends State<_AssignTaskSheet> {
             responseType: _responseType,
           ));
       if (mounted) Navigator.pop(context);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      logAppError(
+        context: '_AssignTaskSheet._submit',
+        error: e,
+        stackTrace: stackTrace,
+      );
       if (mounted) {
         setState(() => _errorText = genericSaveErrorMessage('asignar la tarea'));
       }

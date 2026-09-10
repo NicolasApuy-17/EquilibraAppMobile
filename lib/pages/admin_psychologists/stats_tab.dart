@@ -103,7 +103,11 @@ class _AdminStatsTabState extends State<AdminStatsTab> {
 
   Future<void> _refresh() async {
     final future = _load();
-    setState(() => _future = future);
+    // See the note in tareas_tab.dart's `_refresh` -- an arrow closure
+    // here would "return" the Future itself, which setState rejects.
+    setState(() {
+      _future = future;
+    });
     await future;
   }
 

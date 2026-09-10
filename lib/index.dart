@@ -49,3 +49,5 @@ export '/pages/psychologist_chat/psychologist_chat_widget.dart'
     show PsychologistChatWidget;
 export '/pages/notifications/notifications_widget.dart'
     show NotificationsWidget;
+export '/pages/schedule_session/schedule_session_widget.dart'
+    show ScheduleSessionWidget;

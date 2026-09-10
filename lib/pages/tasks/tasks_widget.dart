@@ -6,6 +6,7 @@ import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/index.dart';
 import '/utils/date_format_es.dart';
+import '/utils/error_logging.dart';
 import '/utils/error_messages.dart';
 import '/utils/task_status.dart';
 import '/utils/validators.dart';
@@ -333,7 +334,14 @@ class _TasksWidgetState extends State<TasksWidget> {
                   stream: queryTasksRecord(
                     queryBuilder: (tasksRecord) => tasksRecord.where('userRef',
                         isEqualTo: currentUserReference),
-                  ),
+                  ).handleError((error, stackTrace) {
+                    logAppError(
+                      context: 'TasksWidget.tasks',
+                      error: error,
+                      stackTrace: stackTrace,
+                    );
+                    throw error;
+                  }),
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
                       return _StateMessage(

@@ -12,6 +12,7 @@ import 'schema/tasks_record.dart';
 import 'schema/user_prefs_record.dart';
 import 'schema/users_record.dart';
 import 'schema/sessions_record.dart';
+import 'schema/session_requests_record.dart';
 import 'schema/activities_record.dart';
 import 'schema/activity_assignments_record.dart';
 import 'schema/app_errors_record.dart';
@@ -31,6 +32,7 @@ export 'schema/tasks_record.dart';
 export 'schema/user_prefs_record.dart';
 export 'schema/users_record.dart';
 export 'schema/sessions_record.dart';
+export 'schema/session_requests_record.dart';
 export 'schema/activities_record.dart';
 export 'schema/activity_assignments_record.dart';
 export 'schema/app_errors_record.dart';
@@ -291,6 +293,43 @@ Future<List<SessionsRecord>> querySessionsRecordOnce({
     queryCollectionOnce(
       SessionsRecord.collection,
       SessionsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+/// Functions to query SessionRequestsRecords (as a Stream and as a Future).
+Future<int> querySessionRequestsRecordCount({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+}) =>
+    queryCollectionCount(
+      SessionRequestsRecord.collection,
+      queryBuilder: queryBuilder,
+      limit: limit,
+    );
+
+Stream<List<SessionRequestsRecord>> querySessionRequestsRecord({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollection(
+      SessionRequestsRecord.collection,
+      SessionRequestsRecord.fromSnapshot,
+      queryBuilder: queryBuilder,
+      limit: limit,
+      singleRecord: singleRecord,
+    );
+
+Future<List<SessionRequestsRecord>> querySessionRequestsRecordOnce({
+  Query Function(Query)? queryBuilder,
+  int limit = -1,
+  bool singleRecord = false,
+}) =>
+    queryCollectionOnce(
+      SessionRequestsRecord.collection,
+      SessionRequestsRecord.fromSnapshot,
       queryBuilder: queryBuilder,
       limit: limit,
       singleRecord: singleRecord,

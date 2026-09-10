@@ -204,6 +204,44 @@ exports.onActivityAssignmentNotification = onDocumentWritten(
   }
 );
 
+/**
+ * `session_requests`: a new request notifies the assigned psychologist;
+ * the psychologist confirming or declining it notifies the patient back.
+ * Mirrors the `activity_assignments` pattern above.
+ */
+exports.onSessionRequestNotification = onDocumentWritten(
+  "session_requests/{requestId}",
+  async (event) => {
+    const before = event.data?.before?.exists ? event.data.before.data() : null;
+    const after = event.data?.after?.exists ? event.data.after.data() : null;
+    if (!after || !after.patientRef || !after.psychologistRef) return null;
+
+    if (!before) {
+      const patientName = await displayNameFor(after.patientRef.id);
+      return notifyUser(after.psychologistRef.id, {
+        type: "session_requested",
+        title: "Nueva solicitud de sesión",
+        body: `${patientName} solicitó agendar una sesión.`,
+        subjectRef: after.patientRef,
+      });
+    }
+
+    if (after.status !== before.status &&
+        (after.status === "confirmada" || after.status === "rechazada")) {
+      return notifyUser(after.patientRef.id, {
+        type: after.status === "confirmada"
+          ? "session_confirmed"
+          : "session_declined",
+        title: after.status === "confirmada"
+          ? "Tu psicólogo confirmó la sesión"
+          : "Tu psicólogo no pudo confirmar la sesión",
+        body: after.psychologistNote || "",
+      });
+    }
+    return null;
+  }
+);
+
 /** Notifies every admin the first time an `app_errors` doc is created. */
 exports.onAppErrorNotification = onDocumentWritten("app_errors/{errorId}", async (event) => {
   if (event.data?.before?.exists || !event.data?.after?.exists) return null;

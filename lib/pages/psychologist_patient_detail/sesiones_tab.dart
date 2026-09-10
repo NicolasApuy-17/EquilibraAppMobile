@@ -2,7 +2,9 @@ import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/utils/date_format_es.dart';
+import '/utils/error_logging.dart';
 import '/utils/error_messages.dart';
+import '/utils/session_request_status.dart';
 import '/utils/validators.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -22,6 +24,69 @@ class SesionesTab extends StatefulWidget {
 }
 
 class _SesionesTabState extends State<SesionesTab> {
+  Future<void> _respondToRequest(
+    SessionRequestsRecord request, {
+    required bool confirm,
+  }) async {
+    final noteController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(confirm ? 'Confirmar sesión' : 'No confirmar sesión'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(confirm
+                    ? '¿Confirmas la sesión del ${formatDateEs(request.requestedDate ?? DateTime.now())} '
+                        'a las ${formatTime24(request.requestedDate ?? DateTime.now())}?'
+                    : '¿Deseas indicar a tu consultante que esta fecha no funciona?'),
+                const SizedBox(height: 12.0),
+                TextField(
+                  controller: noteController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: confirm
+                        ? 'Nota opcional para tu consultante...'
+                        : 'Explica brevemente por qué (opcional)...',
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Volver'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text(confirm ? 'Confirmar' : 'No confirmar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !mounted) return;
+    try {
+      await request.reference.update({
+        'status': confirm ? 'confirmada' : 'rechazada',
+        'respondedAt': DateTime.now(),
+        'psychologistNote': noteController.text.trim(),
+      });
+    } catch (e, stackTrace) {
+      logAppError(
+        context: 'SesionesTab._respondToRequest',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(genericSaveErrorMessage('responder la solicitud'))),
+      );
+    }
+  }
+
   Future<void> _openSessionForm({
     SessionsRecord? existing,
     required int nextSessionNumber,
@@ -78,6 +143,55 @@ class _SesionesTabState extends State<SesionesTab> {
               padding: const EdgeInsetsDirectional.fromSTEB(
                   24.0, 12.0, 24.0, 96.0),
               children: [
+                // Scheduling requests the patient sent from their own
+                // "Programar sesión" screen -- separate from the private
+                // clinical session log below, which only exists for
+                // sessions that already happened.
+                StreamBuilder<List<SessionRequestsRecord>>(
+                  stream: querySessionRequestsRecord(
+                    queryBuilder: (q) => q
+                        .where('patientRef', isEqualTo: patientRef)
+                        .where('psychologistRef', isEqualTo: myRef),
+                  ).handleError((error, stackTrace) {
+                    logAppError(
+                      context: 'SesionesTab.requests',
+                      error: error,
+                      stackTrace: stackTrace,
+                    );
+                    throw error;
+                  }),
+                  builder: (context, requestsSnap) => asyncSection(
+                    requestsSnap,
+                    errorText: 'No se pudieron cargar las solicitudes de sesión.',
+                    (requests) {
+                      if (requests.isEmpty) return const SizedBox.shrink();
+                      final sorted = [...requests]
+                        ..sort((a, b) => (b.createdTime ?? DateTime(2000))
+                            .compareTo(a.createdTime ?? DateTime(2000)));
+                      return Padding(
+                        padding: const EdgeInsetsDirectional.fromSTEB(
+                            0.0, 0.0, 0.0, 20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SectionTitle('Solicitudes de sesión'),
+                            ...sorted.map((request) => _SessionRequestCard(
+                                  request: request,
+                                  onConfirm: request.status == 'pendiente'
+                                      ? () => _respondToRequest(request,
+                                          confirm: true)
+                                      : null,
+                                  onDecline: request.status == 'pendiente'
+                                      ? () => _respondToRequest(request,
+                                          confirm: false)
+                                      : null,
+                                )),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
                 if (sessions.isEmpty)
                   const EmptyHint('Aún no hay sesiones registradas.',
                       icon: Icons.event_note_outlined)
@@ -106,6 +220,108 @@ class _SesionesTabState extends State<SesionesTab> {
           ],
         );
       },
+    );
+  }
+}
+
+class _SessionRequestCard extends StatelessWidget {
+  const _SessionRequestCard({
+    required this.request,
+    this.onConfirm,
+    this.onDecline,
+  });
+
+  final SessionRequestsRecord request;
+  final VoidCallback? onConfirm;
+  final VoidCallback? onDecline;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FlutterFlowTheme.of(context);
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 10.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.secondaryBackground,
+          borderRadius: BorderRadius.circular(18.0),
+          border: Border.all(
+              color: sessionRequestStatusColor(context, request.status)
+                  .withValues(alpha: 0.4)),
+        ),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    request.requestedDate != null
+                        ? '${formatDateEs(request.requestedDate!)} · ${formatTime24(request.requestedDate!)}'
+                        : 'Fecha no especificada',
+                    style: theme.titleSmall.override(
+                      font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                      color: theme.primaryText,
+                      letterSpacing: 0.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsetsDirectional.fromSTEB(8.0, 3.0, 8.0, 3.0),
+                  decoration: BoxDecoration(
+                    color: sessionRequestStatusColor(context, request.status)
+                        .withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: Text(
+                    sessionRequestStatusLabel(request.status),
+                    style: theme.labelSmall.override(
+                      font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                      color: sessionRequestStatusColor(context, request.status),
+                      letterSpacing: 0.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (request.note.isNotEmpty)
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(0.0, 6.0, 0.0, 0.0),
+                child: Text(
+                  request.note,
+                  style: theme.bodyMedium.override(
+                    font: GoogleFonts.outfit(),
+                    color: theme.secondaryText,
+                    letterSpacing: 0.0,
+                  ),
+                ),
+              ),
+            if (onConfirm != null || onDecline != null)
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Wrap(
+                    children: [
+                      if (onDecline != null)
+                        TextButton(
+                          onPressed: onDecline,
+                          child: const Text('No confirmar'),
+                        ),
+                      if (onConfirm != null)
+                        TextButton(
+                          onPressed: onConfirm,
+                          child: const Text('Confirmar'),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

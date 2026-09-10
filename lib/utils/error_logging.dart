@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 import '/auth/firebase_auth/auth_util.dart';
@@ -16,12 +17,20 @@ Future<void> logAppError({
   StackTrace? stackTrace,
   bool fatal = false,
 }) async {
-  unawaited(FirebaseCrashlytics.instance.recordError(
-    error,
-    stackTrace,
-    reason: context,
-    fatal: fatal,
-  ));
+  // Crashlytics has no web plugin implementation -- calling it there throws
+  // an assertion failure ("pluginConstants['isCrashlyticsCollectionEnabled']
+  // != null is not true") on every single logAppError call. `unawaited`
+  // keeps that from blocking the Firestore write below, but it's still an
+  // uncaught error printed to the console on every report; skip it outright
+  // on web instead.
+  if (!kIsWeb) {
+    unawaited(FirebaseCrashlytics.instance.recordError(
+      error,
+      stackTrace,
+      reason: context,
+      fatal: fatal,
+    ));
+  }
 
   try {
     await AppErrorsRecord.collection.add(createAppErrorsRecordData(

@@ -259,6 +259,12 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           builder: (context, params) => LinkPsychologistWidget(),
         ),
         FFRoute(
+          name: ScheduleSessionWidget.routeName,
+          path: ScheduleSessionWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => ScheduleSessionWidget(),
+        ),
+        FFRoute(
           name: PsychologistChatWidget.routeName,
           path: PsychologistChatWidget.routePath,
           requireAuth: true,
