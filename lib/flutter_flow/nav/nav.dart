@@ -467,7 +467,7 @@ class FFRoute {
                   builder: (context, _) => builder(context, ffParams),
                 )
               : builder(context, ffParams);
-          final child = appStateNotifier.loading
+          final rawChild = appStateNotifier.loading
               ? Center(
                   child: SizedBox(
                     width: 50,
@@ -476,6 +476,24 @@ class FFRoute {
                   ),
                 )
               : page;
+
+          // This app is designed phone-first. On a tablet or any wide
+          // window, stretching every screen edge-to-edge leaves rows and
+          // cards laid out for ~400dp floating in 1000dp+ of space and
+          // looking broken. Instead every route gets pinned to a
+          // phone-width column, centred on a backdrop that matches the
+          // page background so the seam is invisible. A no-op on a real
+          // phone, where the screen is already narrower than the cap.
+          final child = ColoredBox(
+            color: FlutterFlowTheme.of(context).primaryBackground,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640.0),
+                child: rawChild,
+              ),
+            ),
+          );
 
           final transitionInfo = state.transitionInfo;
           return transitionInfo.hasTransition

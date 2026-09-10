@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 /// every individual screen's internals -- one wrapper covers everything
 /// inside it, including a `TabBarView`'s tabs.
 class TabletBounded extends StatelessWidget {
-  const TabletBounded({super.key, required this.child, this.maxWidth = 700.0});
+  const TabletBounded({super.key, required this.child, this.maxWidth = 640.0});
 
   final Widget child;
   final double maxWidth;

@@ -65,23 +65,25 @@ const _kLevels = [
     ],
   ),
   _Level(
-    title: 'Jardín con mariposas',
+    title: 'Jardín con pájaros',
     instruction:
-        'Ahora hay más por observar. Busca las 5 mariposas escondidas entre las flores y las hojas.',
-    targetWord: 'las 5 mariposas',
+        'Ahora hay más por observar. Busca los 5 pájaros escondidos entre las flores y las hojas.',
+    targetWord: 'los 5 pájaros',
     skyColors: [Color(0xFFFCE9D0), Color(0xFFD8E8CD)],
     groundColor: Color(0xFF7FB77E),
     items: [
+      // `flutter_dash_rounded` is a bird (Flutter's Dash mascot) -- the
+      // level is named/worded for birds so the icon and the text match.
       _SceneItem(Icons.flutter_dash_rounded, Alignment(-0.8, -0.8),
-          Color(0xFFCB6CE6), true),
+          Color(0xFF4F9BD9), true),
       _SceneItem(Icons.flutter_dash_rounded, Alignment(0.7, -0.6),
-          Color(0xFFCB6CE6), true),
+          Color(0xFF4F9BD9), true),
       _SceneItem(Icons.flutter_dash_rounded, Alignment(-0.2, -0.3),
-          Color(0xFFCB6CE6), true),
+          Color(0xFF4F9BD9), true),
       _SceneItem(Icons.flutter_dash_rounded, Alignment(0.3, 0.1),
-          Color(0xFFCB6CE6), true),
+          Color(0xFF4F9BD9), true),
       _SceneItem(Icons.flutter_dash_rounded, Alignment(-0.6, 0.5),
-          Color(0xFFCB6CE6), true),
+          Color(0xFF4F9BD9), true),
       _SceneItem(Icons.local_florist_rounded, Alignment(0.8, 0.7),
           Color(0xFFE07AA8), false),
       _SceneItem(Icons.local_florist_rounded, Alignment(-0.85, 0.15),

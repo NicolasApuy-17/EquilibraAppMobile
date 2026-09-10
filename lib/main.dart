@@ -130,6 +130,12 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         brightness: Brightness.light,
         useMaterial3: false,
+        // Keep modal/persistent bottom sheets phone-width and centred on
+        // tablets too -- they open from the root navigator, above every
+        // route, so the per-route width cap in nav.dart doesn't reach them.
+        bottomSheetTheme: const BottomSheetThemeData(
+          constraints: BoxConstraints(maxWidth: 640.0),
+        ),
       ),
       themeMode: _themeMode,
       routerConfig: _router,
