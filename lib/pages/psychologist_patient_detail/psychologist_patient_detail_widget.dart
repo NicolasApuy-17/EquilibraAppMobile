@@ -19,9 +19,19 @@ import 'actividades_tab.dart';
 /// patient's currently assigned psychologist -- this screen never assumes
 /// permission, it just reflects what the backend already enforces.
 class PsychologistPatientDetailWidget extends StatelessWidget {
-  const PsychologistPatientDetailWidget({super.key, required this.patient});
+  const PsychologistPatientDetailWidget({
+    super.key,
+    required this.patient,
+    this.initialTabIndex = 0,
+  });
 
   final UsersRecord patient;
+
+  /// Which of the 6 tabs to open on first build -- lets a notification
+  /// ("nuevo registro", "tarea completada", ...) land directly on the tab
+  /// it's about instead of always starting at Resumen. See nav.dart, which
+  /// reads this from a `?tab=` query parameter.
+  final int initialTabIndex;
 
   static String routeName = 'PsychologistPatientDetail';
   static String routePath = '/psychologistPatientDetail';
@@ -39,6 +49,7 @@ class PsychologistPatientDetailWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: _tabs.length,
+      initialIndex: initialTabIndex.clamp(0, _tabs.length - 1),
       child: Scaffold(
         backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
         body: SafeArea(

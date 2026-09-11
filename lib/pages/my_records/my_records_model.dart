@@ -12,6 +12,11 @@ class MyRecordsModel extends FlutterFlowModel<MyRecordsWidget> {
 
   bool sortAscending = false;
 
+  // Toggles between "Emociones" (RecordsRecord) and "Conductas"
+  // (BehavioralRecordsRecord) -- the patient's own behavioral records had
+  // no view at all before this; only their psychologist could see them.
+  bool showBehaviors = false;
+
   ///  State fields for stateful widgets in this page.
 
   final searchController = TextEditingController();

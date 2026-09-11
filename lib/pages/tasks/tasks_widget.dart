@@ -111,12 +111,23 @@ class _TasksWidgetState extends State<TasksWidget> {
     // Assigned tasks with a response type beyond a plain checkbox go
     // through `_TaskResponseSheet` instead (opened by tapping the card).
     if (_isAssignedTask(task) && task.responseType != 'completado') return;
+    final nowDone = task.status != 'completada';
+    // Only offer a comment when *finishing* the task, not when undoing it
+    // -- there's nothing to comment on when marking it pending again.
+    String? comment;
+    if (nowDone) {
+      final result = await _askOptionalComment(initial: task.patientComment);
+      if (result == null) return; // user cancelled
+      comment = result;
+    }
     try {
-      final nowDone = task.status != 'completada';
       await task.reference.update(createTasksRecordData(
         status: nowDone ? 'completada' : 'pendiente',
         completedTime: nowDone ? DateTime.now() : null,
         responseAt: _isAssignedTask(task) && nowDone ? DateTime.now() : null,
+        patientComment: nowDone && comment!.isNotEmpty ? comment : null,
+        patientCommentAt:
+            nowDone && comment!.isNotEmpty ? DateTime.now() : null,
       ));
     } catch (e) {
       if (!mounted) return;
@@ -124,6 +135,58 @@ class _TasksWidgetState extends State<TasksWidget> {
         SnackBar(content: Text(genericSaveErrorMessage('actualizar la tarea'))),
       );
     }
+  }
+
+  /// Small dialog offered whenever a task is marked done, letting the
+  /// patient leave an optional note -- for their own self-created tasks
+  /// and for assigned tasks with the plain `completado` response type
+  /// (anything with a richer response type instead gets this same field
+  /// inside `_TaskResponseSheet`, alongside its actual response). Returns
+  /// the trimmed comment (possibly empty, meaning "no comment"), or `null`
+  /// if the user cancelled out of finishing the task altogether.
+  Future<String?> _askOptionalComment({String? initial}) async {
+    final controller = TextEditingController(text: initial ?? '');
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text('Completar tarea'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('¿Quieres dejar un comentario? (opcional)'),
+                const SizedBox(height: 12.0),
+                TextField(
+                  controller: controller,
+                  minLines: 2,
+                  maxLines: 4,
+                  maxLength: 500,
+                  decoration: InputDecoration(
+                    hintText: 'Escribe un comentario para tu psicólogo...',
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text('Completar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) {
+      controller.dispose();
+      return null;
+    }
+    final text = controller.text.trim();
+    controller.dispose();
+    return text;
   }
 
   @override
@@ -171,16 +234,14 @@ class _TasksWidgetState extends State<TasksWidget> {
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            FlutterFlowTheme.of(context).titleLarge.override(
-                                  font: GoogleFonts.outfit(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  color: FlutterFlowTheme.of(context)
-                                      .primaryText,
-                                  letterSpacing: 0.0,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        style: FlutterFlowTheme.of(context).titleLarge.override(
+                              font: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              color: FlutterFlowTheme.of(context).primaryText,
+                              letterSpacing: 0.0,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                     ),
                     FlutterFlowIconButton(
@@ -692,8 +753,8 @@ class _TaskCard extends StatelessWidget {
                             style: FlutterFlowTheme.of(context)
                                 .bodySmall
                                 .override(
-                                  font:
-                                      GoogleFonts.outfit(fontStyle: FontStyle.italic),
+                                  font: GoogleFonts.outfit(
+                                      fontStyle: FontStyle.italic),
                                   color: FlutterFlowTheme.of(context).primary,
                                   letterSpacing: 0.0,
                                   fontStyle: FontStyle.italic,
@@ -816,8 +877,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
     });
     try {
       final description = _descriptionController.text.trim();
-      final completedTime =
-          _status == 'completada' ? DateTime.now() : null;
+      final completedTime = _status == 'completada' ? DateTime.now() : null;
       if (_isEditing) {
         await widget.existingTask!.reference.update(createTasksRecordData(
           title: title,
@@ -1096,6 +1156,7 @@ class _TaskResponseSheet extends StatefulWidget {
 
 class _TaskResponseSheetState extends State<_TaskResponseSheet> {
   late TextEditingController _textController;
+  late TextEditingController _commentController;
   late double _scaleValue;
   late String _status;
   bool _isSaving = false;
@@ -1105,6 +1166,8 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
   void initState() {
     super.initState();
     _textController = TextEditingController(text: widget.task.responseText);
+    _commentController =
+        TextEditingController(text: widget.task.patientComment ?? '');
     _scaleValue = widget.task.responseValue ?? 5.0;
     _status = widget.task.status;
   }
@@ -1112,6 +1175,7 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
   @override
   void dispose() {
     _textController.dispose();
+    _commentController.dispose();
     super.dispose();
   }
 
@@ -1129,6 +1193,7 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
     });
     try {
       final now = DateTime.now();
+      final comment = normalizeWhitespace(_commentController.text);
       await widget.task.reference.update(createTasksRecordData(
         status: _status,
         responseText: responseType == 'texto'
@@ -1137,6 +1202,8 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
         responseValue: responseType == 'escala' ? _scaleValue : null,
         responseAt: _status == 'completada' ? now : null,
         completedTime: _status == 'completada' ? now : null,
+        patientComment: comment.isNotEmpty ? comment : null,
+        patientCommentAt: comment.isNotEmpty ? now : null,
       ));
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -1153,7 +1220,8 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
   Widget build(BuildContext context) {
     final task = widget.task;
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         decoration: BoxDecoration(
           color: FlutterFlowTheme.of(context).primaryBackground,
@@ -1173,12 +1241,14 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.psychology_alt_rounded,
-                        size: 16.0, color: FlutterFlowTheme.of(context).primary),
+                        size: 16.0,
+                        color: FlutterFlowTheme.of(context).primary),
                     const SizedBox(width: 6.0),
                     Text(
                       'Asignada por tu psicólogo',
                       style: FlutterFlowTheme.of(context).labelMedium.override(
-                            font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                            font:
+                                GoogleFonts.outfit(fontWeight: FontWeight.bold),
                             color: FlutterFlowTheme.of(context).primary,
                             letterSpacing: 0.0,
                             fontWeight: FontWeight.bold,
@@ -1198,7 +1268,8 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
                 ),
                 if (task.description.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 6.0, 0.0, 0.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 6.0, 0.0, 0.0),
                     child: Text(
                       task.description,
                       style: FlutterFlowTheme.of(context).bodyMedium.override(
@@ -1210,7 +1281,8 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
                   ),
                 if (task.hasFrequency() && task.frequency.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 8.0, 0.0, 0.0),
                     child: Text(
                       'Frecuencia: ${taskFrequencyLabel(task.frequency)}',
                       style: FlutterFlowTheme.of(context).bodySmall.override(
@@ -1222,7 +1294,8 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
                   ),
                 if (task.dueDate != null)
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 4.0, 0.0, 0.0),
                     child: Text(
                       'Fecha límite: ${formatDateEs(task.dueDate!)}',
                       style: FlutterFlowTheme.of(context).bodySmall.override(
@@ -1287,6 +1360,28 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
                   const SizedBox(height: 12.0),
                 ],
                 Text(
+                  'Comentario (opcional)',
+                  style: FlutterFlowTheme.of(context).labelMedium.override(
+                        font: GoogleFonts.outfit(),
+                        color: FlutterFlowTheme.of(context).primaryText,
+                        letterSpacing: 0.0,
+                      ),
+                ),
+                const SizedBox(height: 4.0),
+                TextField(
+                  controller: _commentController,
+                  minLines: 2,
+                  maxLines: 4,
+                  maxLength: 500,
+                  decoration: InputDecoration(
+                    hintText: 'Agrega un comentario para tu psicólogo...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8.0),
+                Text(
                   'Estado',
                   style: FlutterFlowTheme.of(context).labelMedium.override(
                         font: GoogleFonts.outfit(),
@@ -1295,7 +1390,8 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
                       ),
                 ),
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 16.0),
+                  padding:
+                      const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 16.0),
                   child: Wrap(
                     spacing: 8.0,
                     runSpacing: 8.0,
@@ -1311,7 +1407,8 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
                 ),
                 if (task.hasFeedback() && task.feedback!.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 16.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 0.0, 0.0, 16.0),
                     child: Container(
                       padding: const EdgeInsets.all(12.0),
                       decoration: BoxDecoration(
@@ -1321,7 +1418,8 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
                       child: Text(
                         'Feedback de tu psicólogo: ${task.feedback}',
                         style: FlutterFlowTheme.of(context).bodySmall.override(
-                              font: GoogleFonts.outfit(fontStyle: FontStyle.italic),
+                              font: GoogleFonts.outfit(
+                                  fontStyle: FontStyle.italic),
                               color: FlutterFlowTheme.of(context).primaryText,
                               letterSpacing: 0.0,
                               fontStyle: FontStyle.italic,
@@ -1331,7 +1429,8 @@ class _TaskResponseSheetState extends State<_TaskResponseSheet> {
                   ),
                 if (_errorText != null)
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 12.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 0.0, 0.0, 12.0),
                     child: Text(
                       _errorText!,
                       style: FlutterFlowTheme.of(context).bodySmall.override(

@@ -11,6 +11,7 @@ import '/flutter_flow/flutter_flow_widgets.dart';
 import 'dart:ui';
 import '/flutter_flow/custom_functions.dart' as functions;
 import '/index.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -290,77 +291,7 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.center,
                                         children: [
-                                          Container(
-                                            width: 100.0,
-                                            height: 100.0,
-                                            decoration: BoxDecoration(
-                                              borderRadius:
-                                                  BorderRadius.circular(9999.0),
-                                              shape: BoxShape.rectangle,
-                                              border: Border.all(
-                                                color:
-                                                    FlutterFlowTheme.of(context)
-                                                        .primary20,
-                                                width: 4.0,
-                                              ),
-                                            ),
-                                            child: Padding(
-                                              padding: EdgeInsets.all(4.0),
-                                              child: Container(
-                                                child: Container(
-                                                  width: 80.0,
-                                                  height: 80.0,
-                                                  decoration: BoxDecoration(
-                                                    color: FlutterFlowTheme.of(
-                                                            context)
-                                                        .primary,
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  alignment:
-                                                      AlignmentDirectional(
-                                                          0.0, 0.0),
-                                                  child: Text(
-                                                    functions.getInitials(
-                                                        currentUserDisplayName
-                                                                .isNotEmpty
-                                                            ? currentUserDisplayName
-                                                            : currentUserEmail),
-                                                    textAlign: TextAlign.center,
-                                                    maxLines: 1,
-                                                    style: FlutterFlowTheme.of(
-                                                            context)
-                                                        .labelMedium
-                                                        .override(
-                                                          font: GoogleFonts
-                                                              .outfit(
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                            fontStyle:
-                                                                FlutterFlowTheme.of(
-                                                                        context)
-                                                                    .labelMedium
-                                                                    .fontStyle,
-                                                          ),
-                                                          color: FlutterFlowTheme
-                                                                  .of(context)
-                                                              .onPrimary,
-                                                          fontSize: 30.4,
-                                                          letterSpacing: 0.0,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          fontStyle:
-                                                              FlutterFlowTheme.of(
-                                                                      context)
-                                                                  .labelMedium
-                                                                  .fontStyle,
-                                                          lineHeight: 1.4,
-                                                        ),
-                                                    overflow: TextOverflow.clip,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
+                                          _ProfileAvatar(),
                                           Column(
                                             mainAxisSize: MainAxisSize.min,
                                             mainAxisAlignment:
@@ -608,8 +539,8 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                     focusColor: Colors.transparent,
                                     hoverColor: Colors.transparent,
                                     highlightColor: Colors.transparent,
-                                    onTap: () => context.pushNamed(
-                                        MyGoalsWidget.routeName),
+                                    onTap: () => context
+                                        .pushNamed(MyGoalsWidget.routeName),
                                     child: wrapWithModel(
                                       model: _model.profileMenuItemModel3,
                                       updateCallback: () => safeSetState(() {}),
@@ -801,6 +732,96 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
           ),
         );
       },
+    );
+  }
+}
+
+/// The user's own photo, when they've uploaded one -- falls back to their
+/// initials otherwise. Wrapped in `AuthUserStreamWidget` so it updates live
+/// the moment `photo_url` changes in Firestore (e.g. right after saving in
+/// EditProfileWidget and popping back here), the same way the rest of this
+/// screen already re-renders live off that stream -- no need to leave and
+/// re-enter any screen for it to show up. Before this, "Mi Perfil" always
+/// rendered initials, never the actual photo: uploading one only ever
+/// showed up inside the profile-settings screen itself.
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar();
+
+  bool _hasValidUrl(String url) =>
+      url.isNotEmpty &&
+      (url.startsWith('http://') || url.startsWith('https://'));
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthUserStreamWidget(
+      builder: (context) {
+        final photoUrl = currentUserPhoto;
+        final fallbackText = currentUserDisplayName.isNotEmpty
+            ? currentUserDisplayName
+            : currentUserEmail;
+        return Container(
+          width: 100.0,
+          height: 100.0,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(9999.0),
+            shape: BoxShape.rectangle,
+            border: Border.all(
+              color: FlutterFlowTheme.of(context).primary20,
+              width: 4.0,
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(4.0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(9999.0),
+              child: _hasValidUrl(photoUrl)
+                  ? CachedNetworkImage(
+                      imageUrl: photoUrl,
+                      width: 80.0,
+                      height: 80.0,
+                      fit: BoxFit.cover,
+                      errorWidget: (context, url, error) =>
+                          _InitialsCircle(text: fallbackText),
+                      placeholder: (context, url) =>
+                          _InitialsCircle(text: fallbackText),
+                    )
+                  : _InitialsCircle(text: fallbackText),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _InitialsCircle extends StatelessWidget {
+  const _InitialsCircle({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 80.0,
+      height: 80.0,
+      decoration: BoxDecoration(
+        color: FlutterFlowTheme.of(context).primary,
+        shape: BoxShape.circle,
+      ),
+      alignment: AlignmentDirectional(0.0, 0.0),
+      child: Text(
+        functions.getInitials(text),
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        style: FlutterFlowTheme.of(context).labelMedium.override(
+              font: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              color: FlutterFlowTheme.of(context).onPrimary,
+              fontSize: 30.4,
+              letterSpacing: 0.0,
+              fontWeight: FontWeight.w600,
+            ),
+        overflow: TextOverflow.clip,
+      ),
     );
   }
 }

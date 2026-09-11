@@ -142,9 +142,9 @@ service cloud.firestore {
         ((resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
           (resource.data.get('createdByRef', resource.data.userRef) == resource.data.userRef
             ? request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['title', 'description', 'dueDate', 'status', 'frequency', 'responseType', 'completedTime'])
+                .hasOnly(['title', 'description', 'dueDate', 'status', 'frequency', 'responseType', 'completedTime', 'patientComment', 'patientCommentAt'])
             : request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['status', 'responseText', 'responseValue', 'responseAt', 'completedTime']))) ||
+                .hasOnly(['status', 'responseText', 'responseValue', 'responseAt', 'completedTime', 'patientComment', 'patientCommentAt']))) ||
          (resource.data.get('psychologistRef', null) == userRef(request.auth.uid) &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['title', 'description', 'dueDate', 'frequency', 'responseType', 'feedback', 'feedbackAt'])));

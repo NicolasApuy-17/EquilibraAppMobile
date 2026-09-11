@@ -46,37 +46,110 @@ class _NotificationsWidgetState extends State<NotificationsWidget> {
     }
   }
 
+  // Tab indices in PsychologistPatientDetailWidget -- see its own `_tabs`
+  // list (Resumen | Avances | Registros | Sesiones | Tareas | Actividades).
+  static const _kRegistrosTab = 2;
+  static const _kSesionesTab = 3;
+  static const _kTareasTab = 4;
+  static const _kActividadesTab = 5;
+
+  // Tab indices in AdminPsychologistsWidget -- see its own TabBar (Dashboard
+  // | Usuarios | Psicólogos | Actividades | Incidencias).
+  static const _kAdminUsuariosTab = 1;
+  static const _kAdminIncidenciasTab = 4;
+
+  /// Routes to exactly what the notification is about, based on its
+  /// `type` (see firebase/functions/notifications.js for the full list and
+  /// what each one means). `type` alone is enough to pick both the
+  /// destination and, implicitly, who's looking at it: a patient only ever
+  /// receives patient-facing types, a psychologist only psychologist-facing
+  /// ones, an admin only admin-facing ones -- the query behind this screen
+  /// already scopes `notifications` to the signed-in user's own.
   Future<void> _handleTap(NotificationsRecord notification) async {
     if (!notification.read) {
       unawaited(notification.reference.update({'read': true}));
     }
-    if (notification.type == 'chat_message' &&
-        notification.conversationId.isNotEmpty) {
+
+    switch (notification.type) {
+      case 'chat_message':
+        if (notification.conversationId.isEmpty) return;
+        context.pushNamed(
+          PsychologistChatWidget.routeName,
+          extra: notification.conversationId,
+        );
+        return;
+
+      // Psychologist-facing: jump straight to the tab of that
+      // consultante's detail screen the notification is about.
+      case 'record_created':
+      case 'behavioral_record_created':
+        await _openPatientDetail(notification, tabIndex: _kRegistrosTab);
+        return;
+      case 'session_requested':
+        await _openPatientDetail(notification, tabIndex: _kSesionesTab);
+        return;
+      case 'task_completed':
+        await _openPatientDetail(notification, tabIndex: _kTareasTab);
+        return;
+      case 'activity_completed':
+        await _openPatientDetail(notification, tabIndex: _kActividadesTab);
+        return;
+
+      // Patient-facing: there's no single-item detail screen for these,
+      // so this opens the section the item actually lives in.
+      case 'psychologist_comment':
+        context.pushNamed(MyRecordsWidget.routeName);
+        return;
+      case 'task_assigned':
+      case 'task_feedback':
+        context.pushNamed(TasksWidget.routeName);
+        return;
+      case 'activity_assigned':
+        context.pushNamed(RegulationToolsWidget.routeName);
+        return;
+      case 'session_confirmed':
+      case 'session_declined':
+        context.pushNamed(ScheduleSessionWidget.routeName);
+        return;
+
+      // Admin-facing: open the relevant tab of the admin panel.
+      case 'new_link':
+        context.pushNamed(
+          AdminPsychologistsWidget.routeName,
+          queryParameters: {'tab': '$_kAdminUsuariosTab'},
+        );
+        return;
+      case 'app_error':
+        context.pushNamed(
+          AdminPsychologistsWidget.routeName,
+          queryParameters: {'tab': '$_kAdminIncidenciasTab'},
+        );
+        return;
+
+      default:
+        // Unrecognized type: already marked read above, nowhere specific
+        // to send them.
+        return;
+    }
+  }
+
+  Future<void> _openPatientDetail(
+    NotificationsRecord notification, {
+    required int tabIndex,
+  }) async {
+    if (notification.subjectRef == null) return;
+    try {
+      final patient =
+          await UsersRecord.getDocumentOnce(notification.subjectRef!);
       if (!mounted) return;
       context.pushNamed(
-        PsychologistChatWidget.routeName,
-        extra: notification.conversationId,
+        PsychologistPatientDetailWidget.routeName,
+        extra: patient,
+        queryParameters: {'tab': '$tabIndex'},
       );
-      return;
-    }
-    // A psychologist tapping a notification about one of their consultantes
-    // (a new record, a completed task/activity) jumps straight to that
-    // patient's detail screen. Admin notifications never carry a role this
-    // screen knows how to deep-link into, so they just get marked read.
-    if (notification.subjectRef != null &&
-        currentUserDocument?.role == 'psicologo') {
-      try {
-        final patient =
-            await UsersRecord.getDocumentOnce(notification.subjectRef!);
-        if (!mounted) return;
-        context.pushNamed(
-          PsychologistPatientDetailWidget.routeName,
-          extra: patient,
-        );
-      } catch (_) {
-        // Patient may no longer exist/be assigned to this psychologist --
-        // nothing to navigate to, but the tap still marked it read above.
-      }
+    } catch (_) {
+      // Patient may no longer exist/be assigned to this psychologist --
+      // nothing to navigate to, but the tap still marked it read above.
     }
   }
 
@@ -97,6 +170,12 @@ class _NotificationsWidgetState extends State<NotificationsWidget> {
       case 'record_created':
       case 'behavioral_record_created':
         return Icons.mood_rounded;
+      case 'session_requested':
+        return Icons.event_available_rounded;
+      case 'session_confirmed':
+        return Icons.event_available_rounded;
+      case 'session_declined':
+        return Icons.event_busy_rounded;
       case 'new_link':
         return Icons.link_rounded;
       case 'app_error':

@@ -205,131 +205,88 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                 hoverColor: Colors.transparent,
                                                 highlightColor:
                                                     Colors.transparent,
+                                                // This used to look exactly
+                                                // like a profile-photo
+                                                // avatar (initials in a
+                                                // circle) while actually
+                                                // only ever signing the
+                                                // user out -- a nested
+                                                // InkWell underneath an
+                                                // outer one that pushed
+                                                // UserProfileWidget, so the
+                                                // "open profile" tap never
+                                                // fired at all. "Mi Perfil"
+                                                // is already reachable from
+                                                // the bottom nav bar, so
+                                                // this is sign-out only now
+                                                // -- a door/exit icon, not
+                                                // an avatar, so it reads as
+                                                // what it does.
                                                 onTap: () async {
-                                                  context.goNamed(
-                                                      UserProfileWidget
-                                                          .routeName);
-                                                },
-                                                child: Container(
-                                                  child: InkWell(
-                                                    splashColor:
-                                                        Colors.transparent,
-                                                    focusColor:
-                                                        Colors.transparent,
-                                                    hoverColor:
-                                                        Colors.transparent,
-                                                    highlightColor:
-                                                        Colors.transparent,
-                                                    onTap: () async {
-                                                      Function() _navigate =
-                                                          () {};
-                                                      var confirmDialogResponse =
-                                                          await showDialog<
-                                                                  bool>(
-                                                                context:
-                                                                    context,
-                                                                builder:
-                                                                    (alertDialogContext) {
-                                                                  return AlertDialog(
-                                                                    title: Text(
-                                                                        'Cerrar sesión'),
-                                                                    content: Text(
-                                                                        '¿Deseas salir de tu cuenta?'),
-                                                                    actions: [
-                                                                      TextButton(
-                                                                        onPressed: () => Navigator.pop(
+                                                  final confirmDialogResponse =
+                                                      await showDialog<bool>(
+                                                            context: context,
+                                                            builder:
+                                                                (alertDialogContext) {
+                                                              return AlertDialog(
+                                                                title: Text(
+                                                                    'Cerrar sesión'),
+                                                                content: Text(
+                                                                    '¿Deseas salir de tu cuenta?'),
+                                                                actions: [
+                                                                  TextButton(
+                                                                    onPressed: () =>
+                                                                        Navigator.pop(
                                                                             alertDialogContext,
                                                                             false),
-                                                                        child: Text(
-                                                                            'Cancelar'),
-                                                                      ),
-                                                                      TextButton(
-                                                                        onPressed: () => Navigator.pop(
+                                                                    child: Text(
+                                                                        'Cancelar'),
+                                                                  ),
+                                                                  TextButton(
+                                                                    onPressed: () =>
+                                                                        Navigator.pop(
                                                                             alertDialogContext,
                                                                             true),
-                                                                        child: Text(
-                                                                            'Cerrar sesión'),
-                                                                      ),
-                                                                    ],
-                                                                  );
-                                                                },
-                                                              ) ??
-                                                              false;
-                                                      if (confirmDialogResponse) {
-                                                        GoRouter.of(context)
-                                                            .prepareAuthEvent();
-                                                        await authManager
-                                                            .signOut();
-                                                        GoRouter.of(context)
-                                                            .clearRedirectLocation();
-
-                                                        _navigate = () =>
-                                                            context.goNamedAuth(
-                                                                TestScreenWidget
-                                                                    .routeName,
-                                                                context
-                                                                    .mounted);
-                                                      }
-
-                                                      _navigate();
-                                                    },
-                                                    child: Container(
-                                                      width: 48.0,
-                                                      height: 48.0,
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            FlutterFlowTheme.of(
-                                                                    context)
-                                                                .primary,
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                      alignment:
-                                                          AlignmentDirectional(
-                                                              0.0, 0.0),
-                                                      child:
-                                                          AuthUserStreamWidget(
-                                                        builder: (context) =>
-                                                            Text(
-                                                          functions.getInitials(
-                                                              currentUserDisplayName),
-                                                          textAlign:
-                                                              TextAlign.center,
-                                                          maxLines: 1,
-                                                          style: FlutterFlowTheme
-                                                                  .of(context)
-                                                              .labelMedium
-                                                              .override(
-                                                                font:
-                                                                    GoogleFonts
-                                                                        .outfit(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  fontStyle: FlutterFlowTheme.of(
-                                                                          context)
-                                                                      .labelMedium
-                                                                      .fontStyle,
-                                                                ),
-                                                                color: FlutterFlowTheme.of(
-                                                                        context)
-                                                                    .onPrimary,
-                                                                fontSize: 18.24,
-                                                                letterSpacing:
-                                                                    0.0,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                fontStyle: FlutterFlowTheme.of(
-                                                                        context)
-                                                                    .labelMedium
-                                                                    .fontStyle,
-                                                                lineHeight: 1.4,
-                                                              ),
-                                                          overflow:
-                                                              TextOverflow.clip,
-                                                        ),
-                                                      ),
-                                                    ),
+                                                                    child: Text(
+                                                                        'Cerrar sesión'),
+                                                                  ),
+                                                                ],
+                                                              );
+                                                            },
+                                                          ) ??
+                                                          false;
+                                                  if (!confirmDialogResponse) {
+                                                    return;
+                                                  }
+                                                  GoRouter.of(context)
+                                                      .prepareAuthEvent();
+                                                  await authManager.signOut();
+                                                  if (!context.mounted) return;
+                                                  GoRouter.of(context)
+                                                      .clearRedirectLocation();
+                                                  context.goNamedAuth(
+                                                      TestScreenWidget
+                                                          .routeName,
+                                                      context.mounted);
+                                                },
+                                                child: Container(
+                                                  width: 48.0,
+                                                  height: 48.0,
+                                                  decoration: BoxDecoration(
+                                                    color: FlutterFlowTheme.of(
+                                                            context)
+                                                        .primary,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  alignment:
+                                                      AlignmentDirectional(
+                                                          0.0, 0.0),
+                                                  child: Icon(
+                                                    Icons.logout_rounded,
+                                                    color: FlutterFlowTheme.of(
+                                                            context)
+                                                        .onPrimary,
+                                                    size: 22.0,
                                                   ),
                                                 ),
                                               ),
@@ -700,6 +657,32 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                   size: 20.0,
                                                 ),
                                                 label: 'Programar sesión',
+                                              ),
+                                            ),
+                                          ),
+                                          InkWell(
+                                            splashColor: Colors.transparent,
+                                            focusColor: Colors.transparent,
+                                            hoverColor: Colors.transparent,
+                                            highlightColor: Colors.transparent,
+                                            onTap: () async {
+                                              context.pushNamed(
+                                                  TasksWidget.routeName);
+                                            },
+                                            child: wrapWithModel(
+                                              model: _model.quickActionModel4,
+                                              updateCallback: () =>
+                                                  safeSetState(() {}),
+                                              child: QuickActionWidget(
+                                                target: 'navigate(tasks)',
+                                                icon: Icon(
+                                                  Icons.assignment_rounded,
+                                                  color: FlutterFlowTheme.of(
+                                                          context)
+                                                      .primary,
+                                                  size: 20.0,
+                                                ),
+                                                label: 'Tareas',
                                               ),
                                             ),
                                           ),

@@ -26,7 +26,13 @@ import 'incidents_tab.dart';
 /// `role == 'admin'`); the `role` check here is only a friendlier UI guard
 /// on top of that.
 class AdminPsychologistsWidget extends StatefulWidget {
-  const AdminPsychologistsWidget({super.key});
+  const AdminPsychologistsWidget({super.key, this.initialTabIndex = 0});
+
+  /// Which of the 5 tabs to open on first build -- lets a notification
+  /// ("nuevo vínculo", "nuevo error") land directly on Usuarios/Incidencias
+  /// instead of always starting at Dashboard. See nav.dart, which reads
+  /// this from a `?tab=` query parameter.
+  final int initialTabIndex;
 
   static String routeName = 'AdminPsychologists';
   static String routePath = '/adminPsychologists';
@@ -40,11 +46,16 @@ class _AdminPsychologistsWidgetState extends State<AdminPsychologistsWidget>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
+  static const _tabCount = 5;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this)
-      ..addListener(() => setState(() {}));
+    _tabController = TabController(
+      length: _tabCount,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, _tabCount - 1),
+    )..addListener(() => setState(() {}));
   }
 
   @override

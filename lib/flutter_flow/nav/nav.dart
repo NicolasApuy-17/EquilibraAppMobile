@@ -236,7 +236,11 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           name: AdminPsychologistsWidget.routeName,
           path: AdminPsychologistsWidget.routePath,
           requireAuth: true,
-          builder: (context, params) => AdminPsychologistsWidget(),
+          builder: (context, params) => AdminPsychologistsWidget(
+            initialTabIndex:
+                int.tryParse(params.state.uri.queryParameters['tab'] ?? '') ??
+                    0,
+          ),
         ),
         FFRoute(
           name: PsychologistHomeWidget.routeName,
@@ -250,6 +254,9 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           requireAuth: true,
           builder: (context, params) => PsychologistPatientDetailWidget(
             patient: params.state.extra as UsersRecord,
+            initialTabIndex:
+                int.tryParse(params.state.uri.queryParameters['tab'] ?? '') ??
+                    0,
           ),
         ),
         FFRoute(
@@ -274,8 +281,9 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
             // widget's own "couldn't open this conversation" state -- see
             // the `extraMap` cast bug this same pattern already caused
             // elsewhere in this file.
-            conversationId:
-                params.state.extra is String ? params.state.extra as String : '',
+            conversationId: params.state.extra is String
+                ? params.state.extra as String
+                : '',
           ),
         ),
         FFRoute(

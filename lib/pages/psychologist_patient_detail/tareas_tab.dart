@@ -128,8 +128,8 @@ class _TareasTabState extends State<TareasTab> {
                     labelBuilder: (o) =>
                         o == 'todas' ? 'Todas' : taskStatusLabel(o),
                     selected: _statusFilter ?? 'todas',
-                    onSelected: (o) => setState(
-                        () => _statusFilter = o == 'todas' ? null : o),
+                    onSelected: (o) =>
+                        setState(() => _statusFilter = o == 'todas' ? null : o),
                   ),
                   const SizedBox(height: 16.0),
                   if (tasks.isEmpty)
@@ -222,7 +222,8 @@ class _TaskRow extends StatelessWidget {
               ),
               if (!_isAssignedByPsychologist)
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
+                  padding:
+                      const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
                   child: Text(
                     'Creada por el consultante',
                     style: theme.bodySmall.override(
@@ -234,7 +235,8 @@ class _TaskRow extends StatelessWidget {
                 ),
               if (task.dueDate != null)
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
+                  padding:
+                      const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
                   child: Text(
                     'Vence: ${formatDateEs(task.dueDate!)}',
                     style: theme.bodySmall.override(
@@ -291,12 +293,13 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
             '${widget.task.dueDate != null ? ' antes del ${formatDateEs(widget.task.dueDate!)}' : ''}.',
       );
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Recordatorio enviado por chat.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Recordatorio enviado por chat.')));
       }
     } on PsychologistServiceException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
     } finally {
       if (mounted) setState(() => _isSendingReminder = false);
@@ -316,7 +319,8 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        setState(() => _errorText = genericSaveErrorMessage('guardar el feedback'));
+        setState(
+            () => _errorText = genericSaveErrorMessage('guardar el feedback'));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -328,7 +332,8 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
     final task = widget.task;
     final theme = FlutterFlowTheme.of(context);
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         decoration: BoxDecoration(
           color: theme.primaryBackground,
@@ -355,7 +360,8 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                 ),
                 if (task.description.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 6.0, 0.0, 0.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 6.0, 0.0, 0.0),
                     child: Text(task.description),
                   ),
                 const SizedBox(height: 12.0),
@@ -376,9 +382,31 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                   Text('${task.responseValue!.round()}/10'),
                   const SizedBox(height: 12.0),
                 ],
+                if (task.hasPatientComment() && task.patientComment!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 0.0, 0.0, 12.0),
+                    child: Container(
+                      padding: const EdgeInsets.all(12.0),
+                      decoration: BoxDecoration(
+                        color: theme.secondaryBackground,
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                      child: Text(
+                        'Comentario del consultante: ${task.patientComment}',
+                        style: theme.bodySmall.override(
+                          font: GoogleFonts.outfit(fontStyle: FontStyle.italic),
+                          color: theme.primaryText,
+                          letterSpacing: 0.0,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ),
                 if (task.responseAt != null)
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 12.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 0.0, 0.0, 12.0),
                     child: Text(
                       'Respondió el ${formatDateEs(task.responseAt!)}',
                       style: theme.bodySmall.override(
@@ -398,7 +426,8 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                             height: 14.0,
                             child: CircularProgressIndicator(strokeWidth: 2.0),
                           )
-                        : const Icon(Icons.chat_bubble_outline_rounded, size: 16.0),
+                        : const Icon(Icons.chat_bubble_outline_rounded,
+                            size: 16.0),
                     label: const Text('Recordar por chat'),
                   ),
                 ),
@@ -410,7 +439,8 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                 ),
                 if (_errorText != null)
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 12.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 0.0, 0.0, 12.0),
                     child: Text(
                       _errorText!,
                       style: TextStyle(color: theme.error, fontSize: 12.0),
@@ -504,7 +534,8 @@ class _AssignTaskSheetState extends State<_AssignTaskSheet> {
         stackTrace: stackTrace,
       );
       if (mounted) {
-        setState(() => _errorText = genericSaveErrorMessage('asignar la tarea'));
+        setState(
+            () => _errorText = genericSaveErrorMessage('asignar la tarea'));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -514,7 +545,8 @@ class _AssignTaskSheetState extends State<_AssignTaskSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         decoration: BoxDecoration(
           color: FlutterFlowTheme.of(context).primaryBackground,
@@ -557,7 +589,8 @@ class _AssignTaskSheetState extends State<_AssignTaskSheet> {
                       ),
                 ),
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 12.0),
+                  padding:
+                      const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 12.0),
                   child: InkWell(
                     onTap: _pickDueDate,
                     child: Container(
@@ -583,7 +616,8 @@ class _AssignTaskSheetState extends State<_AssignTaskSheet> {
                       ),
                 ),
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 12.0),
+                  padding:
+                      const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 12.0),
                   child: ChoiceChipRow(
                     options: kTaskFrequencies,
                     labelBuilder: taskFrequencyLabel,
@@ -600,7 +634,8 @@ class _AssignTaskSheetState extends State<_AssignTaskSheet> {
                       ),
                 ),
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 16.0),
+                  padding:
+                      const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 16.0),
                   child: ChoiceChipRow(
                     options: kTaskResponseTypes,
                     labelBuilder: taskResponseTypeLabel,
@@ -610,7 +645,8 @@ class _AssignTaskSheetState extends State<_AssignTaskSheet> {
                 ),
                 if (_errorText != null)
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 12.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 0.0, 0.0, 12.0),
                     child: Text(
                       _errorText!,
                       style: TextStyle(

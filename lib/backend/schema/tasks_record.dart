@@ -122,6 +122,20 @@ class TasksRecord extends FirestoreRecord {
   DateTime? get feedbackAt => _feedbackAt;
   bool hasFeedbackAt() => _feedbackAt != null;
 
+  // "patientComment" field. An optional note the patient may leave when
+  // marking the task done -- independent of `responseText` (the required
+  // answer for `responseType == 'texto'`), available regardless of which
+  // `responseType` the task uses, including a plain checkbox
+  // ('completado'). Never written by the psychologist.
+  String? _patientComment;
+  String? get patientComment => _patientComment;
+  bool hasPatientComment() => _patientComment != null;
+
+  // "patientCommentAt" field.
+  DateTime? _patientCommentAt;
+  DateTime? get patientCommentAt => _patientCommentAt;
+  bool hasPatientCommentAt() => _patientCommentAt != null;
+
   void _initializeFields() {
     _title = snapshotData['title'] as String?;
     _description = snapshotData['description'] as String?;
@@ -135,12 +149,14 @@ class TasksRecord extends FirestoreRecord {
     _frequency = snapshotData['frequency'] as String?;
     _responseType = snapshotData['responseType'] as String?;
     _responseText = snapshotData['responseText'] as String?;
-    _responseValue =
-        safeGet<double?>(() => castToType<double>(snapshotData['responseValue']));
+    _responseValue = safeGet<double?>(
+        () => castToType<double>(snapshotData['responseValue']));
     _responseAt = snapshotData['responseAt'] as DateTime?;
     _completedTime = snapshotData['completedTime'] as DateTime?;
     _feedback = snapshotData['feedback'] as String?;
     _feedbackAt = snapshotData['feedbackAt'] as DateTime?;
+    _patientComment = snapshotData['patientComment'] as String?;
+    _patientCommentAt = snapshotData['patientCommentAt'] as DateTime?;
   }
 
   static CollectionReference get collection =>
@@ -194,6 +210,8 @@ Map<String, dynamic> createTasksRecordData({
   DateTime? completedTime,
   String? feedback,
   DateTime? feedbackAt,
+  String? patientComment,
+  DateTime? patientCommentAt,
 }) {
   final firestoreData = mapToFirestore(
     <String, dynamic>{
@@ -214,6 +232,8 @@ Map<String, dynamic> createTasksRecordData({
       'completedTime': completedTime,
       'feedback': feedback,
       'feedbackAt': feedbackAt,
+      'patientComment': patientComment,
+      'patientCommentAt': patientCommentAt,
     }.withoutNulls,
   );
 
@@ -241,7 +261,9 @@ class TasksRecordDocumentEquality implements Equality<TasksRecord> {
         e1?.responseAt == e2?.responseAt &&
         e1?.completedTime == e2?.completedTime &&
         e1?.feedback == e2?.feedback &&
-        e1?.feedbackAt == e2?.feedbackAt;
+        e1?.feedbackAt == e2?.feedbackAt &&
+        e1?.patientComment == e2?.patientComment &&
+        e1?.patientCommentAt == e2?.patientCommentAt;
   }
 
   @override
@@ -263,6 +285,8 @@ class TasksRecordDocumentEquality implements Equality<TasksRecord> {
         e?.completedTime,
         e?.feedback,
         e?.feedbackAt,
+        e?.patientComment,
+        e?.patientCommentAt,
       ]);
 
   @override
