@@ -5,6 +5,7 @@ export '/pages/behavioral_record/behavioral_record_widget.dart'
     show BehavioralRecordWidget;
 export '/pages/register_hub/register_hub_widget.dart' show RegisterHubWidget;
 export '/pages/edit_profile/edit_profile_widget.dart' show EditProfileWidget;
+export '/pages/account_panel/account_panel_widget.dart' show AccountPanelWidget;
 export '/pages/help_center/help_center_widget.dart' show HelpCenterWidget;
 export '/pages/support_contact/support_contact_widget.dart'
     show SupportContactWidget;

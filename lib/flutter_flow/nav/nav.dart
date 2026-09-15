@@ -189,6 +189,12 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           builder: (context, params) => EditProfileWidget(),
         ),
         FFRoute(
+          name: AccountPanelWidget.routeName,
+          path: AccountPanelWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => AccountPanelWidget(),
+        ),
+        FFRoute(
           name: HelpCenterWidget.routeName,
           path: HelpCenterWidget.routePath,
           requireAuth: true,

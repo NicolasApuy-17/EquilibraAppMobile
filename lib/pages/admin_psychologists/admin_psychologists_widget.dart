@@ -1,6 +1,7 @@
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/components/notification_bell_button.dart';
+import '/components/profile_avatar_button.dart';
 import '/components/tablet_bounded.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
@@ -150,6 +151,10 @@ class _AdminPsychologistsWidgetState extends State<AdminPsychologistsWidget>
                       ),
                     ),
                     const NotificationBellButton(),
+                    const Padding(
+                      padding: EdgeInsetsDirectional.only(start: 4.0),
+                      child: ProfileAvatarButton(),
+                    ),
                     IconButton(
                       onPressed: _confirmSignOut,
                       icon: Icon(

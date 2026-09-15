@@ -287,6 +287,10 @@ exports.adminDiagnosePatientLink = onCall({ cors: true }, async (request) => {
     patientId,
     role: patientData.role ?? null,
     storedPsychologistRefPath: storedRef ? storedRef.path : null,
+    // Ground truth for the "photo uploads but doesn't show/save" report --
+    // reveals whether `photo_url` actually persisted server-side or not,
+    // independent of anything the client's own cache/listeners show.
+    storedPhotoUrl: patientData.photo_url ?? null,
   };
 
   // Ground truth via the Admin SDK, which bypasses firestore.rules entirely

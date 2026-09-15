@@ -1,11 +1,10 @@
-import 'dart:io';
-
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/flutter_flow/custom_functions.dart' as functions;
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
+import '/utils/error_logging.dart';
 import '/utils/error_messages.dart';
 import '/utils/validators.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -37,8 +36,13 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
   bool _isUploadingPhoto = false;
   String? _errorText;
 
-  // Local path of the picked image (shown immediately while it uploads).
-  File? _pickedPhotoFile;
+  // Bytes of the picked image (shown immediately while it uploads). Kept as
+  // raw bytes rather than a `dart:io` `File` -- `File`/`putFile` don't work
+  // on Flutter Web at all (picking a photo there throws "Unsupported
+  // operation: Platform._operatingSystem" the moment `putFile` touches the
+  // file), so bytes + `putData` is what actually works on every platform
+  // this app targets, not just mobile.
+  Uint8List? _pickedPhotoBytes;
   // Firebase Storage download URL once the picked photo finishes uploading.
   // Null means "no new photo was picked" — the existing one is kept as-is.
   String? _uploadedPhotoUrl;
@@ -78,9 +82,10 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
     }
     if (picked == null || !mounted) return;
 
-    final file = File(picked.path);
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
     setState(() {
-      _pickedPhotoFile = file;
+      _pickedPhotoBytes = bytes;
       _isUploadingPhoto = true;
       _errorText = null;
     });
@@ -88,24 +93,63 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
     try {
       final storageRef = FirebaseStorage.instance
           .ref('users/${userRef.id}/profile_photo.jpg');
-      await storageRef.putFile(file);
-      final downloadUrl = await storageRef.getDownloadURL();
+      await storageRef.putData(
+        bytes,
+        SettableMetadata(contentType: 'image/jpeg'),
+      );
+      final rawDownloadUrl = await storageRef.getDownloadURL();
+      // Every photo is uploaded to this same fixed path, so overwriting it
+      // keeps the same download token -- the URL string is otherwise
+      // identical from one upload to the next. That's not just a
+      // `CachedNetworkImage`/`flutter_cache_manager` problem (evicting the
+      // URL from those still left it broken on web): on Flutter Web this
+      // request goes through the *browser's own* HTTP cache too, keyed on
+      // the exact URL, completely outside Flutter's control -- Firebase
+      // Storage's download endpoint also serves these with cacheable
+      // response headers by default. A trailing cache-busting query
+      // param makes the URL genuinely different on every upload, which
+      // defeats all of those layers at once (this one is unrecognized by
+      // Storage and simply ignored server-side; the object is still
+      // resolved from `token`).
+      final downloadUrl =
+          '$rawDownloadUrl&cb=${DateTime.now().millisecondsSinceEpoch}';
+      // Saved to the profile right away, rather than only staged in local
+      // state until "Guardar cambios" is tapped: picking a new photo reads
+      // as "done" to the user the moment the upload finishes (there's
+      // visible feedback and no error), so if they leave via the back
+      // button instead of the save button -- an easy mistake, since
+      // there's nothing on screen suggesting the photo alone needs a
+      // separate save -- the new photo was silently discarded and the
+      // profile kept showing the old one (or none) indefinitely. Name/
+      // phone stay deferred to the save button as before; only the photo
+      // needs to be foolproof here.
+      await updateUserProfile(photoUrl: downloadUrl);
       if (!mounted) return;
       setState(() {
         _uploadedPhotoUrl = downloadUrl;
       });
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (e, stackTrace) {
+      logAppError(
+        context: 'EditProfileWidget._pickAndUploadPhoto (${e.code})',
+        error: e,
+        stackTrace: stackTrace,
+      );
       if (!mounted) return;
       setState(() {
-        _pickedPhotoFile = null;
+        _pickedPhotoBytes = null;
         _errorText = e.code == 'unauthorized'
             ? 'No tienes permiso para subir esta imagen.'
             : genericSaveErrorMessage('subir la imagen');
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
+      logAppError(
+        context: 'EditProfileWidget._pickAndUploadPhoto',
+        error: e,
+        stackTrace: stackTrace,
+      );
       if (!mounted) return;
       setState(() {
-        _pickedPhotoFile = null;
+        _pickedPhotoBytes = null;
         _errorText = genericSaveErrorMessage('subir la imagen');
       });
     } finally {
@@ -217,7 +261,7 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
                       Center(
                         child: _AvatarPicker(
                           photoUrl: _uploadedPhotoUrl ?? currentUserPhoto,
-                          localFile: _pickedPhotoFile,
+                          localBytes: _pickedPhotoBytes,
                           isUploading: _isUploadingPhoto,
                           fallbackText: _nameController.text.isNotEmpty
                               ? _nameController.text
@@ -408,14 +452,14 @@ class _AppTextField extends StatelessWidget {
 class _AvatarPicker extends StatelessWidget {
   const _AvatarPicker({
     required this.photoUrl,
-    required this.localFile,
+    required this.localBytes,
     required this.isUploading,
     required this.fallbackText,
     required this.onTap,
   });
 
   final String photoUrl;
-  final File? localFile;
+  final Uint8List? localBytes;
   final bool isUploading;
   final String fallbackText;
   final VoidCallback? onTap;
@@ -447,9 +491,9 @@ class _AvatarPicker extends StatelessWidget {
               padding: EdgeInsets.all(4.0),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(9999.0),
-                child: localFile != null
-                    ? Image.file(
-                        localFile!,
+                child: localBytes != null
+                    ? Image.memory(
+                        localBytes!,
                         width: 80.0,
                         height: 80.0,
                         fit: BoxFit.cover,
