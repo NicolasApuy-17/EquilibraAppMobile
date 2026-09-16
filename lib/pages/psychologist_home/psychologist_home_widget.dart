@@ -2,6 +2,7 @@ import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/components/notification_bell_button.dart';
 import '/components/profile_avatar_button.dart';
+import '/components/responsive_card_grid.dart';
 import '/components/tablet_bounded.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
@@ -533,18 +534,49 @@ class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
                                         upcoming.patient.reference.id:
                                             upcoming.date,
                                     };
-                                    return Column(
-                                      children: patients
-                                          .map((patient) => _PatientCard(
-                                                patient: patient,
-                                                pendingTasks: pendingByPatient[
-                                                        patient.reference.id] ??
-                                                    0,
-                                                nextSessionDate:
-                                                    nextSessionByPatient[
-                                                        patient.reference.id],
-                                              ))
-                                          .toList(),
+                                    Widget buildCard(UsersRecord patient) =>
+                                        _PatientCard(
+                                          patient: patient,
+                                          pendingTasks: pendingByPatient[
+                                                  patient.reference.id] ??
+                                              0,
+                                          nextSessionDate: nextSessionByPatient[
+                                              patient.reference.id],
+                                        );
+                                    // A tablet-width `LayoutBuilder` shows 2
+                                    // consultante cards side by side instead
+                                    // of 1 stretched-then-empty column. This
+                                    // list is built eagerly already (a plain
+                                    // `Column`, not `ListView.builder`), so a
+                                    // `Wrap` is simplest here -- no need for
+                                    // `ResponsiveCardRow`'s lazy row-pairing,
+                                    // which is for genuinely lazy lists.
+                                    return LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final columns = responsiveColumnsFor(
+                                            constraints.maxWidth);
+                                        if (columns <= 1) {
+                                          return Column(
+                                            children: patients
+                                                .map(buildCard)
+                                                .toList(),
+                                          );
+                                        }
+                                        const spacing = 12.0;
+                                        final cardWidth =
+                                            (constraints.maxWidth -
+                                                    spacing * (columns - 1)) /
+                                                columns;
+                                        return Wrap(
+                                          spacing: spacing,
+                                          children: patients
+                                              .map((patient) => SizedBox(
+                                                    width: cardWidth,
+                                                    child: buildCard(patient),
+                                                  ))
+                                              .toList(),
+                                        );
+                                      },
                                     );
                                   },
                                 );

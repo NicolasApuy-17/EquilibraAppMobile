@@ -500,16 +500,21 @@ class FFRoute {
           // This app is designed phone-first. On a tablet or any wide
           // window, stretching every screen edge-to-edge leaves rows and
           // cards laid out for ~400dp floating in 1000dp+ of space and
-          // looking broken. Instead every route gets pinned to a
-          // phone-width column, centred on a backdrop that matches the
-          // page background so the seam is invisible. A no-op on a real
-          // phone, where the screen is already narrower than the cap.
+          // looking broken. Instead every route gets pinned to a capped-
+          // width column, centred on a backdrop that matches the page
+          // background so the seam is invisible. A no-op on a real phone,
+          // where the screen is already narrower than the cap. 900, not a
+          // tighter phone-width cap: narrow enough that a single column of
+          // text never stretches into unreadable line lengths, but wide
+          // enough that gallery-style lists (see `ResponsiveCardRow`) can
+          // actually show two cards side by side on a tablet instead of
+          // leaving most of the screen empty around a phone-width column.
           final child = ColoredBox(
             color: FlutterFlowTheme.of(context).primaryBackground,
             child: Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640.0),
+                constraints: const BoxConstraints(maxWidth: 900.0),
                 child: rawChild,
               ),
             ),

@@ -2,6 +2,7 @@ import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/components/notification_bell_button.dart';
 import '/components/profile_avatar_button.dart';
+import '/components/responsive_card_grid.dart';
 import '/components/tablet_bounded.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
@@ -277,11 +278,22 @@ class _PsychologistsTab extends StatelessWidget {
         ),
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsetsDirectional.fromSTEB(24.0, 12.0, 24.0, 96.0),
-      itemCount: psychologists.length,
-      itemBuilder: (context, index) =>
-          _PsychologistCard(psychologist: psychologists[index]),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = responsiveColumnsFor(constraints.maxWidth);
+        final rowCount = (psychologists.length / columns).ceil();
+        return ListView.builder(
+          padding: const EdgeInsetsDirectional.fromSTEB(24.0, 12.0, 24.0, 96.0),
+          itemCount: rowCount,
+          itemBuilder: (context, rowIndex) => ResponsiveCardRow<UsersRecord>(
+            items: psychologists,
+            rowIndex: rowIndex,
+            columns: columns,
+            itemBuilder: (context, psychologist) =>
+                _PsychologistCard(psychologist: psychologist),
+          ),
+        );
+      },
     );
   }
 }
@@ -831,100 +843,28 @@ class _UsersTabState extends State<_UsersTab> {
                   ),
                 );
               }
-              return ListView.builder(
-                padding:
-                    const EdgeInsetsDirectional.fromSTEB(24.0, 8.0, 24.0, 96.0),
-                itemCount: users.length,
-                itemBuilder: (context, index) {
-                  final user = users[index];
-                  final isPatient = user.role == 'paciente';
-                  final isSelf = user.reference.id == currentUserUid;
-                  final psychologistName =
-                      !isPatient || user.psychologistRef == null
-                          ? null
-                          : psychologistNames[user.psychologistRef!.id] ??
-                              'Psicólogo no encontrado';
-                  return Padding(
+              // A tablet-width `LayoutBuilder` puts 2 user cards side by
+              // side instead of 1 stretched-then-empty column -- see
+              // `ResponsiveCardRow`'s own doc comment for why this keeps
+              // `ListView.builder`'s laziness instead of switching to a
+              // `GridView`/`Wrap`.
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns = responsiveColumnsFor(constraints.maxWidth);
+                  final rowCount = (users.length / columns).ceil();
+                  return ListView.builder(
                     padding: const EdgeInsetsDirectional.fromSTEB(
-                        0.0, 0.0, 0.0, 12.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: FlutterFlowTheme.of(context).secondaryBackground,
-                        borderRadius: BorderRadius.circular(20.0),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    user.displayName.isEmpty
-                                        ? user.email
-                                        : user.displayName,
-                                    style: FlutterFlowTheme.of(context)
-                                        .titleSmall
-                                        .override(
-                                          font: GoogleFonts.outfit(
-                                              fontWeight: FontWeight.bold),
-                                          color: FlutterFlowTheme.of(context)
-                                              .primaryText,
-                                          letterSpacing: 0.0,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                  ),
-                                ),
-                                _RoleBadge(role: user.role),
-                                const SizedBox(width: 8.0),
-                                _ActiveToggleButton(user: user),
-                              ],
-                            ),
-                            if (psychologistName != null)
-                              Padding(
-                                padding: const EdgeInsetsDirectional.fromSTEB(
-                                    0.0, 4.0, 0.0, 0.0),
-                                child: Text(
-                                  'Psicólogo: $psychologistName',
-                                  style: FlutterFlowTheme.of(context)
-                                      .bodySmall
-                                      .override(
-                                        font: GoogleFonts.outfit(),
-                                        color: FlutterFlowTheme.of(context)
-                                            .secondaryText,
-                                        letterSpacing: 0.0,
-                                      ),
-                                ),
-                              ),
-                            Align(
-                              alignment: AlignmentDirectional.centerEnd,
-                              child: Wrap(
-                                children: [
-                                  if (!isSelf)
-                                    TextButton(
-                                      onPressed: () => _changeRole(user),
-                                      child: const Text('Cambiar rol'),
-                                    ),
-                                  if (isPatient) ...[
-                                    TextButton(
-                                      onPressed: () => _reassign(user),
-                                      child: const Text('Reasignar'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => _diagnose(user),
-                                      child: const Text('Diagnóstico'),
-                                    ),
-                                    TextButton(
-                                      onPressed: _backfillPsychologistRefs,
-                                      child: const Text('Reparar registros'),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                        24.0, 8.0, 24.0, 96.0),
+                    itemCount: rowCount,
+                    itemBuilder: (context, rowIndex) => Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                          0.0, 0.0, 0.0, 12.0),
+                      child: ResponsiveCardRow<UsersRecord>(
+                        items: users,
+                        rowIndex: rowIndex,
+                        columns: columns,
+                        itemBuilder: (context, user) =>
+                            _buildUserCard(context, user, psychologistNames),
                       ),
                     ),
                   );
@@ -934,6 +874,90 @@ class _UsersTabState extends State<_UsersTab> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildUserCard(
+    BuildContext context,
+    UsersRecord user,
+    Map<String, String> psychologistNames,
+  ) {
+    final isPatient = user.role == 'paciente';
+    final isSelf = user.reference.id == currentUserUid;
+    final psychologistName = !isPatient || user.psychologistRef == null
+        ? null
+        : psychologistNames[user.psychologistRef!.id] ??
+            'Psicólogo no encontrado';
+    return Container(
+      decoration: BoxDecoration(
+        color: FlutterFlowTheme.of(context).secondaryBackground,
+        borderRadius: BorderRadius.circular(20.0),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    user.displayName.isEmpty ? user.email : user.displayName,
+                    style: FlutterFlowTheme.of(context).titleSmall.override(
+                          font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                          color: FlutterFlowTheme.of(context).primaryText,
+                          letterSpacing: 0.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ),
+                _RoleBadge(role: user.role),
+                const SizedBox(width: 8.0),
+                _ActiveToggleButton(user: user),
+              ],
+            ),
+            if (psychologistName != null)
+              Padding(
+                padding:
+                    const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
+                child: Text(
+                  'Psicólogo: $psychologistName',
+                  style: FlutterFlowTheme.of(context).bodySmall.override(
+                        font: GoogleFonts.outfit(),
+                        color: FlutterFlowTheme.of(context).secondaryText,
+                        letterSpacing: 0.0,
+                      ),
+                ),
+              ),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: Wrap(
+                children: [
+                  if (!isSelf)
+                    TextButton(
+                      onPressed: () => _changeRole(user),
+                      child: const Text('Cambiar rol'),
+                    ),
+                  if (isPatient) ...[
+                    TextButton(
+                      onPressed: () => _reassign(user),
+                      child: const Text('Reasignar'),
+                    ),
+                    TextButton(
+                      onPressed: () => _diagnose(user),
+                      child: const Text('Diagnóstico'),
+                    ),
+                    TextButton(
+                      onPressed: _backfillPsychologistRefs,
+                      child: const Text('Reparar registros'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
