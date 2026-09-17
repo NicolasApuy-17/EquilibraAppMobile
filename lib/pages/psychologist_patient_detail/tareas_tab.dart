@@ -307,6 +307,16 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
   }
 
   Future<void> _saveFeedback() async {
+    final feedbackError = validateDescription(
+      _feedbackController.text,
+      maxLength: 500,
+      required: true,
+      requiredMessage: 'Escribe un comentario de feedback.',
+    );
+    if (feedbackError != null) {
+      setState(() => _errorText = feedbackError);
+      return;
+    }
     setState(() {
       _isSaving = true;
       _errorText = null;
@@ -505,6 +515,20 @@ class _AssignTaskSheetState extends State<_AssignTaskSheet> {
     );
     if (titleError != null) {
       setState(() => _errorText = titleError);
+      return;
+    }
+    final instructionsError = validateDescription(
+      _instructionsController.text,
+      maxLength: 500,
+      required: false,
+    );
+    if (instructionsError != null) {
+      setState(() => _errorText = instructionsError);
+      return;
+    }
+    final dueDateError = validateGoalDate(_dueDate);
+    if (dueDateError != null) {
+      setState(() => _errorText = dueDateError);
       return;
     }
     setState(() {

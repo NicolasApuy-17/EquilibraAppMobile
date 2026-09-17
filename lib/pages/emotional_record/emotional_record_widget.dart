@@ -2,6 +2,7 @@ import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/components/bottom_nav/bottom_nav_widget.dart';
 import '/components/button/button_widget.dart';
+import '/components/scroll_hiding_bottom_nav.dart';
 import '/components/emotion_pill_clean_widget.dart';
 import '/components/slider/slider_widget.dart';
 import '/components/text_field/text_field_widget.dart';
@@ -182,7 +183,8 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
             mainAxisSize: MainAxisSize.max,
             children: [
               Expanded(
-                child: Container(
+                child: ScrollHidingBottomNav(
+                  content: Container(
                   child: SingleChildScrollView(
                     primary: false,
                     child: Column(
@@ -849,11 +851,12 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                     ),
                   ),
                 ),
-              ),
-              wrapWithModel(
+              bottomNav: wrapWithModel(
                 model: _model.bottomNavModel,
                 updateCallback: () => safeSetState(() {}),
                 child: BottomNavWidget(),
+              ),
+              ),
               ),
             ],
           ),

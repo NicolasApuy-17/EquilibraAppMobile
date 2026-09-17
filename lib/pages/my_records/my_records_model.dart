@@ -3,6 +3,9 @@ import '/flutter_flow/flutter_flow_util.dart';
 import 'my_records_widget.dart' show MyRecordsWidget;
 import 'package:flutter/material.dart';
 
+/// Which of the three record types "Mis registros" is currently showing.
+enum RecordsTab { emotions, behaviors, goals }
+
 class MyRecordsModel extends FlutterFlowModel<MyRecordsWidget> {
   ///  Local state fields for this page.
 
@@ -12,10 +15,12 @@ class MyRecordsModel extends FlutterFlowModel<MyRecordsWidget> {
 
   bool sortAscending = false;
 
-  // Toggles between "Emociones" (RecordsRecord) and "Conductas"
-  // (BehavioralRecordsRecord) -- the patient's own behavioral records had
-  // no view at all before this; only their psychologist could see them.
-  bool showBehaviors = false;
+  // Which tab is selected: "Emociones" (RecordsRecord), "Conductas"
+  // (BehavioralRecordsRecord), or "Objetivos" (GoalsRecord, with their
+  // per-step checklist). The patient's own behavioral records had no view
+  // at all before "Conductas" was added; only their psychologist could see
+  // them.
+  RecordsTab tab = RecordsTab.emotions;
 
   ///  State fields for stateful widgets in this page.
 

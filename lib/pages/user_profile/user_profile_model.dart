@@ -29,8 +29,6 @@ class UserProfileModel extends FlutterFlowModel<UserProfileWidget> {
   // Model for ProfileMenuItem.
   late ProfileMenuItemModel profileMenuItemModel2;
   // Model for ProfileMenuItem.
-  late ProfileMenuItemModel profileMenuItemModel3;
-  // Model for ProfileMenuItem.
   late ProfileMenuItemModel profileMenuItemModel4;
   // Model for ProfileMenuItem.
   late ProfileMenuItemModel profileMenuItemModel5;
@@ -46,7 +44,6 @@ class UserProfileModel extends FlutterFlowModel<UserProfileWidget> {
     profileStatModel3 = createModel(context, () => ProfileStatModel());
     profileMenuItemModel1 = createModel(context, () => ProfileMenuItemModel());
     profileMenuItemModel2 = createModel(context, () => ProfileMenuItemModel());
-    profileMenuItemModel3 = createModel(context, () => ProfileMenuItemModel());
     profileMenuItemModel4 = createModel(context, () => ProfileMenuItemModel());
     profileMenuItemModel5 = createModel(context, () => ProfileMenuItemModel());
     buttonModel = createModel(context, () => ButtonModel());
@@ -60,7 +57,6 @@ class UserProfileModel extends FlutterFlowModel<UserProfileWidget> {
     profileStatModel3.dispose();
     profileMenuItemModel1.dispose();
     profileMenuItemModel2.dispose();
-    profileMenuItemModel3.dispose();
     profileMenuItemModel4.dispose();
     profileMenuItemModel5.dispose();
     buttonModel.dispose();

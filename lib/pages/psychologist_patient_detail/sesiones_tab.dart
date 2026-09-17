@@ -455,13 +455,18 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
   }
 
   Future<void> _pickDate({required bool isNextSession}) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate: isNextSession
-          ? (_nextSessionDate ?? DateTime.now())
-          : _sessionDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(DateTime.now().year + 5),
+      initialDate:
+          isNextSession ? (_nextSessionDate ?? now) : _sessionDate,
+      // The session date documents something that already happened, so it
+      // can't be picked as a future date; the next session is the
+      // opposite -- a future appointment, so it can't be picked in the
+      // past. Mirrors `validatePastOrTodayDate`/`validateGoalDate` below.
+      firstDate: isNextSession ? today : DateTime(2020),
+      lastDate: isNextSession ? DateTime(now.year + 5) : today,
     );
     if (picked == null) return;
     setState(() {
@@ -482,6 +487,16 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
     );
     if (topicError != null) {
       setState(() => _errorText = topicError);
+      return;
+    }
+    final sessionDateError = validatePastOrTodayDate(_sessionDate);
+    if (sessionDateError != null) {
+      setState(() => _errorText = sessionDateError);
+      return;
+    }
+    final nextSessionDateError = validateGoalDate(_nextSessionDate);
+    if (nextSessionDateError != null) {
+      setState(() => _errorText = nextSessionDateError);
       return;
     }
     setState(() {

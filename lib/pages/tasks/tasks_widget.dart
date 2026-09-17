@@ -1,6 +1,7 @@
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/components/bottom_nav5/bottom_nav5_widget.dart';
+import '/components/scroll_hiding_bottom_nav.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
@@ -391,7 +392,8 @@ class _TasksWidgetState extends State<TasksWidget> {
                 ),
               ),
               Expanded(
-                child: StreamBuilder<List<TasksRecord>>(
+                child: ScrollHidingBottomNav(
+                  content: StreamBuilder<List<TasksRecord>>(
                   stream: queryTasksRecord(
                     queryBuilder: (tasksRecord) => tasksRecord.where('userRef',
                         isEqualTo: currentUserReference),
@@ -478,11 +480,12 @@ class _TasksWidgetState extends State<TasksWidget> {
                     );
                   },
                 ),
-              ),
-              wrapWithModel(
+              bottomNav: wrapWithModel(
                 model: _model.bottomNavModel,
                 updateCallback: () => safeSetState(() {}),
                 child: BottomNav5Widget(),
+              ),
+              ),
               ),
             ],
           ),
@@ -832,19 +835,6 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
     }
   }
 
-  /// A due date in the past doesn't make sense for a pending task; mirrors
-  /// the "no puede ser anterior a hoy" rule used for goal target dates.
-  String? _validateDueDate(DateTime? value) {
-    if (value == null) return null;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final due = DateTime(value.year, value.month, value.day);
-    if (due.isBefore(today)) {
-      return 'La fecha de vencimiento no puede ser anterior a hoy.';
-    }
-    return null;
-  }
-
   Future<void> _submit() async {
     final titleError = validateFreeText(
       _titleController.text,
@@ -865,7 +855,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       setState(() => _errorText = descriptionError);
       return;
     }
-    final dueDateError = _validateDueDate(_dueDate);
+    final dueDateError = validateGoalDate(_dueDate);
     if (dueDateError != null) {
       setState(() => _errorText = dueDateError);
       return;

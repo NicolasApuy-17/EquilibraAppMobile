@@ -9,6 +9,7 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/index.dart';
 import '/utils/date_format_es.dart';
 import '/utils/error_logging.dart';
+import 'news_section.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -434,6 +435,8 @@ class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
                                 return _DashboardSection(data: snapshot.data!);
                               },
                             ),
+                            const SizedBox(height: 16.0),
+                            const PsychologistNewsSection(),
                             const SizedBox(height: 24.0),
                             Text(
                               'Mis consultantes',

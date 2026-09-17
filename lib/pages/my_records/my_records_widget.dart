@@ -1,6 +1,7 @@
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/components/bottom_nav5/bottom_nav5_widget.dart';
+import '/components/scroll_hiding_bottom_nav.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
@@ -52,6 +53,38 @@ class _MyRecordsWidgetState extends State<MyRecordsWidget> {
     _model.dispose();
 
     super.dispose();
+  }
+
+  Future<void> _confirmDeleteGoal(GoalsRecord goal) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (alertDialogContext) => AlertDialog(
+            title: Text('Eliminar objetivo'),
+            content: Text(
+                '¿Deseas eliminar "${goal.title}"? Esta acción no se puede deshacer.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(alertDialogContext, false),
+                child: Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(alertDialogContext, true),
+                child: Text('Eliminar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+    try {
+      await goal.reference.delete();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(genericSaveErrorMessage('eliminar el objetivo'))),
+      );
+    }
   }
 
   @override
@@ -127,9 +160,9 @@ class _MyRecordsWidgetState extends State<MyRecordsWidget> {
                       child: _SegmentButton(
                         label: 'Emociones',
                         icon: Icons.mood_rounded,
-                        selected: !_model.showBehaviors,
-                        onTap: () =>
-                            safeSetState(() => _model.showBehaviors = false),
+                        selected: _model.tab == RecordsTab.emotions,
+                        onTap: () => safeSetState(
+                            () => _model.tab = RecordsTab.emotions),
                       ),
                     ),
                     SizedBox(width: 8.0),
@@ -137,15 +170,25 @@ class _MyRecordsWidgetState extends State<MyRecordsWidget> {
                       child: _SegmentButton(
                         label: 'Conductas',
                         icon: Icons.checklist_rounded,
-                        selected: _model.showBehaviors,
+                        selected: _model.tab == RecordsTab.behaviors,
+                        onTap: () => safeSetState(
+                            () => _model.tab = RecordsTab.behaviors),
+                      ),
+                    ),
+                    SizedBox(width: 8.0),
+                    Expanded(
+                      child: _SegmentButton(
+                        label: 'Objetivos',
+                        icon: Icons.flag_rounded,
+                        selected: _model.tab == RecordsTab.goals,
                         onTap: () =>
-                            safeSetState(() => _model.showBehaviors = true),
+                            safeSetState(() => _model.tab = RecordsTab.goals),
                       ),
                     ),
                   ],
                 ),
               ),
-              if (!_model.showBehaviors)
+              if (_model.tab == RecordsTab.emotions)
                 Padding(
                   padding:
                       EdgeInsetsDirectional.fromSTEB(24.0, 0.0, 24.0, 16.0),
@@ -282,8 +325,72 @@ class _MyRecordsWidgetState extends State<MyRecordsWidget> {
                   ),
                 ),
               Expanded(
-                child: _model.showBehaviors
-                    ? StreamBuilder<List<BehavioralRecordsRecord>>(
+                child: ScrollHidingBottomNav(
+                  content: _model.tab == RecordsTab.goals
+                    ? StreamBuilder<List<GoalsRecord>>(
+                        stream: queryGoalsRecord(
+                          queryBuilder: (goalsRecord) => goalsRecord.where(
+                              'userRef',
+                              isEqualTo: currentUserReference),
+                        ),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasError) {
+                            return _StateMessage(
+                              icon: Icons.error_outline_rounded,
+                              title: 'No se pudieron cargar tus objetivos.',
+                              subtitle: 'Intenta nuevamente más tarde.',
+                            );
+                          }
+                          if (!snapshot.hasData) {
+                            return Center(
+                              child: SizedBox(
+                                width: 50,
+                                height: 50,
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          }
+                          final goals = snapshot.data!.toList()
+                            ..sort((a, b) {
+                              if (a.completed != b.completed) {
+                                return a.completed ? 1 : -1;
+                              }
+                              final da = a.targetDate ??
+                                  a.createdTime ??
+                                  DateTime(2100);
+                              final db = b.targetDate ??
+                                  b.createdTime ??
+                                  DateTime(2100);
+                              return da.compareTo(db);
+                            });
+
+                          if (goals.isEmpty) {
+                            return _StateMessage(
+                              icon: Icons.flag_outlined,
+                              title: 'Aún no tienes objetivos',
+                              subtitle:
+                                  'Registra uno desde "Registrar" para verlo aquí.',
+                            );
+                          }
+
+                          return ListView.builder(
+                            padding: EdgeInsetsDirectional.fromSTEB(
+                                24.0, 12.0, 24.0, 24.0),
+                            itemCount: goals.length,
+                            itemBuilder: (context, index) => Padding(
+                              padding: EdgeInsetsDirectional.fromSTEB(
+                                  0.0, 0.0, 0.0, 12.0),
+                              child: _GoalRecordCard(
+                                goal: goals[index],
+                                onDelete: () =>
+                                    _confirmDeleteGoal(goals[index]),
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : _model.tab == RecordsTab.behaviors
+                        ? StreamBuilder<List<BehavioralRecordsRecord>>(
                         stream: queryBehavioralRecordsRecord(
                           queryBuilder: (q) => q.where('userRef',
                               isEqualTo: currentUserReference),
@@ -416,11 +523,12 @@ class _MyRecordsWidgetState extends State<MyRecordsWidget> {
                           );
                         },
                       ),
-              ),
-              wrapWithModel(
+              bottomNav: wrapWithModel(
                 model: _model.bottomNavModel,
                 updateCallback: () => safeSetState(() {}),
                 child: BottomNav5Widget(),
+              ),
+              ),
               ),
             ],
           ),
@@ -1369,6 +1477,263 @@ class _EditBehavioralRecordSheetState
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One goal in the "Objetivos" tab: the title/description/target date, plus
+/// either its step checklist (tap a step to check it off, which also
+/// derives whether the whole goal counts as done) or, for a goal created
+/// before steps existed, the old single "mark as done" toggle.
+class _GoalRecordCard extends StatelessWidget {
+  const _GoalRecordCard({required this.goal, required this.onDelete});
+
+  final GoalsRecord goal;
+  final VoidCallback onDelete;
+
+  Future<void> _toggleStep(BuildContext context, int index) async {
+    final steps = List<GoalStep>.from(goal.steps);
+    steps[index] = steps[index].copyWith(completed: !steps[index].completed);
+    final allDone = steps.every((s) => s.completed);
+    try {
+      await goal.reference.update({
+        'steps': steps.map((s) => s.toMap()).toList(),
+        'completed': allDone,
+        'completedTime': allDone ? getCurrentTimestamp : FieldValue.delete(),
+      });
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text(genericSaveErrorMessage('actualizar el objetivo'))),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleWholeGoal(BuildContext context) async {
+    final nowCompleted = !goal.completed;
+    try {
+      if (nowCompleted) {
+        await goal.reference.update(createGoalsRecordData(
+          completed: true,
+          completedTime: getCurrentTimestamp,
+        ));
+      } else {
+        await goal.reference.update({
+          'completed': false,
+          'completedTime': FieldValue.delete(),
+        });
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text(genericSaveErrorMessage('actualizar el objetivo'))),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FlutterFlowTheme.of(context);
+    final steps = goal.steps;
+    final isDone = goal.completed;
+    final doneSteps = steps.where((s) => s.completed).length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.secondaryBackground,
+        borderRadius: BorderRadius.circular(24.0),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (steps.isEmpty)
+                  InkWell(
+                    onTap: () => _toggleWholeGoal(context),
+                    child: Icon(
+                      isDone
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      color: isDone ? theme.success : theme.secondaryText,
+                      size: 26.0,
+                    ),
+                  )
+                else
+                  Icon(
+                    Icons.flag_rounded,
+                    color: isDone ? theme.success : theme.primary,
+                    size: 26.0,
+                  ),
+                Expanded(
+                  child: Padding(
+                    padding:
+                        EdgeInsetsDirectional.fromSTEB(12.0, 0.0, 12.0, 0.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          goal.title.isEmpty ? 'Sin título' : goal.title,
+                          style: theme.titleMedium.override(
+                            font: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w600),
+                            color: isDone
+                                ? theme.secondaryText
+                                : theme.primaryText,
+                            letterSpacing: 0.0,
+                            fontWeight: FontWeight.w600,
+                            decoration: isDone
+                                ? TextDecoration.lineThrough
+                                : TextDecoration.none,
+                          ),
+                        ),
+                        if (goal.description.isNotEmpty)
+                          Padding(
+                            padding: EdgeInsetsDirectional.fromSTEB(
+                                0.0, 4.0, 0.0, 0.0),
+                            child: Text(
+                              goal.description,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.bodyMedium.override(
+                                font: GoogleFonts.outfit(),
+                                color: theme.secondaryText,
+                                letterSpacing: 0.0,
+                              ),
+                            ),
+                          ),
+                        Padding(
+                          padding: EdgeInsetsDirectional.fromSTEB(
+                              0.0, 8.0, 0.0, 0.0),
+                          child: Wrap(
+                            spacing: 8.0,
+                            runSpacing: 4.0,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Container(
+                                padding: EdgeInsetsDirectional.fromSTEB(
+                                    8.0, 4.0, 8.0, 4.0),
+                                decoration: BoxDecoration(
+                                  color:
+                                      (isDone ? theme.success : theme.warning)
+                                          .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10.0),
+                                ),
+                                child: Text(
+                                  isDone
+                                      ? 'Cumplido'
+                                      : steps.isEmpty
+                                          ? 'Pendiente'
+                                          : '$doneSteps/${steps.length} pasos',
+                                  style: theme.labelSmall.override(
+                                    font: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.bold),
+                                    color: isDone
+                                        ? theme.success
+                                        : theme.warning,
+                                    letterSpacing: 0.0,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              if (goal.targetDate != null)
+                                Text(
+                                  formatDateEs(goal.targetDate!),
+                                  style: theme.labelSmall.override(
+                                    font: GoogleFonts.outfit(),
+                                    color: theme.secondaryText,
+                                    letterSpacing: 0.0,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: onDelete,
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    color: theme.secondaryText,
+                    size: 22.0,
+                  ),
+                ),
+              ],
+            ),
+            if (steps.isNotEmpty)
+              Padding(
+                padding: EdgeInsetsDirectional.fromSTEB(0.0, 12.0, 0.0, 0.0),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < steps.length; i++)
+                      _GoalStepRow(
+                        step: steps[i],
+                        onTap: () => _toggleStep(context, i),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One checkable step row inside [_GoalRecordCard].
+class _GoalStepRow extends StatelessWidget {
+  const _GoalStepRow({required this.step, required this.onTap});
+
+  final GoalStep step;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FlutterFlowTheme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10.0),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 6.0),
+        child: Row(
+          children: [
+            Icon(
+              step.completed
+                  ? Icons.check_box_rounded
+                  : Icons.check_box_outline_blank_rounded,
+              size: 20.0,
+              color: step.completed ? theme.success : theme.secondaryText,
+            ),
+            SizedBox(width: 10.0),
+            Expanded(
+              child: Text(
+                step.title,
+                style: theme.bodyMedium.override(
+                  font: GoogleFonts.outfit(),
+                  color: step.completed
+                      ? theme.secondaryText
+                      : theme.primaryText,
+                  letterSpacing: 0.0,
+                  decoration: step.completed
+                      ? TextDecoration.lineThrough
+                      : TextDecoration.none,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -3,6 +3,7 @@ import '/backend/backend.dart';
 import '/components/behavior_chip/behavior_chip_widget.dart';
 import '/components/bottom_nav/bottom_nav_widget.dart';
 import '/components/button/button_widget.dart';
+import '/components/scroll_hiding_bottom_nav.dart';
 import '/components/text_field/text_field_widget.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
@@ -230,7 +231,8 @@ class _BehavioralRecordWidgetState extends State<BehavioralRecordWidget> {
             mainAxisSize: MainAxisSize.max,
             children: [
               Expanded(
-                child: Container(
+                child: ScrollHidingBottomNav(
+                  content: Container(
                   child: SingleChildScrollView(
                     primary: false,
                     child: Column(
@@ -672,11 +674,12 @@ class _BehavioralRecordWidgetState extends State<BehavioralRecordWidget> {
                     ),
                   ),
                 ),
-              ),
-              wrapWithModel(
+              bottomNav: wrapWithModel(
                 model: _model.bottomNavModel,
                 updateCallback: () => safeSetState(() {}),
                 child: BottomNavWidget(),
+              ),
+              ),
               ),
             ],
           ),

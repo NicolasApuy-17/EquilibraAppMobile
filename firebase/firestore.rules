@@ -240,6 +240,34 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Only true when the caller's own `users` doc has role == 'psicologo'.
+    // Same no-per-document-argument shape as `isAdmin()`, so it's safe to
+    // use in a `read` rule that backs a `list` query too, unlike
+    // `isAssignedPsychologist()` above.
+    function isPsychologist() {
+      return request.auth != null &&
+        get(userRef(request.auth.uid)).data.role == 'psicologo';
+    }
+
+    // An announcement a psychologist publishes for their linked patients
+    // (optional image/link). Read is open to any signed-in user; the
+    // patient home screen itself only ever queries for
+    // `psychologistRef == <their own assigned psychologist>`, so this
+    // isn't a global broadcast in practice, but the collection can't
+    // enforce that client-side filtering itself -- doing so here would
+    // need a `get()` on the patient's own doc per list result, which is
+    // the exact pitfall `isAssignedPsychologist()` warns about above.
+    // Only the authoring psychologist (or an admin) may create/edit/
+    // remove their own posts.
+    match /news/{document} {
+      allow read: if request.auth != null;
+      allow create: if isPsychologist() &&
+        request.resource.data.psychologistRef == userRef(request.auth.uid);
+      allow update, delete: if isAdmin() ||
+        (isPsychologist() &&
+          resource.data.psychologistRef == userRef(request.auth.uid));
+    }
+
     // One activity assigned to one patient by their psychologist. The
     // assignment's own fields are immutable once created; only the patient
     // may update their progress on it (status/openedAt/completedAt).

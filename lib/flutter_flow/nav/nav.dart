@@ -207,10 +207,10 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           builder: (context, params) => SupportContactWidget(),
         ),
         FFRoute(
-          name: MyGoalsWidget.routeName,
-          path: MyGoalsWidget.routePath,
+          name: GoalRecordWidget.routeName,
+          path: GoalRecordWidget.routePath,
           requireAuth: true,
-          builder: (context, params) => MyGoalsWidget(),
+          builder: (context, params) => GoalRecordWidget(),
         ),
         FFRoute(
           name: WeeklyProgressWidget.routeName,
