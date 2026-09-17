@@ -12,6 +12,11 @@ library validators;
 final RegExp _fullNameRegex =
     RegExp(r'^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?: [A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*$');
 
+/// Used to reject "words" that couldn't be a real name -- keyboard mashing
+/// ("asdfgh", "qwrty") and consonant strings never contain a vowel, while
+/// every real name (in any language this app's charset supports) does.
+final RegExp _vowelRegex = RegExp(r'[aeiouáéíóúüAEIOUÁÉÍÓÚÜ]');
+
 /// Mismo patrón usado en el resto del proyecto (FlutterFlow) para no tener
 /// dos criterios de "correo válido" distintos conviviendo en la app.
 /// https://stackoverflow.com/a/201378
@@ -30,6 +35,17 @@ String? validateFullName(String? value) {
   if (trimmed.length > 60) return 'El nombre no puede superar los 60 caracteres.';
   if (!_fullNameRegex.hasMatch(trimmed)) {
     return 'El nombre solo puede contener letras y espacios (sin números ni símbolos).';
+  }
+  // Beyond the charset check above: reject "words" that can't be a real
+  // name -- keyboard mashing with no vowel ("xzvbk"), or one letter
+  // repeated ("aaaa") -- without rejecting genuinely short real names.
+  for (final word in trimmed.split(' ')) {
+    if (!_vowelRegex.hasMatch(word)) {
+      return 'Ingresa tu nombre real; ese texto no parece un nombre.';
+    }
+    if (word.length >= 3 && word.toLowerCase().split('').toSet().length == 1) {
+      return 'Ingresa tu nombre real; ese texto no parece un nombre.';
+    }
   }
   return null;
 }
@@ -57,20 +73,27 @@ String? validatePasswordConfirmation(String? value, String original) {
   return null;
 }
 
-/// [required] es `false` por defecto porque el teléfono es opcional en la
-/// mayoría de los flujos (p. ej. Editar Perfil); cuando se ingresa algo,
-/// igual debe tener un formato válido.
+/// Los celulares peruanos tienen exactamente 9 dígitos. [required] es
+/// `false` por defecto porque el teléfono es opcional en la mayoría de los
+/// flujos (p. ej. Editar Perfil); cuando se ingresa algo, igual debe tener
+/// el formato correcto.
 String? validatePhone(String? value, {bool required = false}) {
   final trimmed = value?.trim() ?? '';
   if (trimmed.isEmpty) {
-    return required ? 'Ingresa tu número de teléfono.' : null;
+    return required ? 'Ingresa tu número de celular.' : null;
   }
   if (!_phoneAllowedCharsRegex.hasMatch(trimmed)) {
-    return 'El teléfono solo puede contener números, espacios, guiones y "+".';
+    return 'El celular solo puede contener números, espacios, guiones y "+".';
   }
-  final digitsOnly = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
-  if (digitsOnly.length < 7 || digitsOnly.length > 15) {
-    return 'Ingresa un teléfono válido (entre 7 y 15 dígitos).';
+  var digitsOnly = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+  // Allow (and ignore) a leading Peru country code ("+51"/"51") in front of
+  // the 9-digit number, since that's how the hint text in Editar Perfil
+  // suggests entering it.
+  if (digitsOnly.length == 11 && digitsOnly.startsWith('51')) {
+    digitsOnly = digitsOnly.substring(2);
+  }
+  if (digitsOnly.length != 9) {
+    return 'Ingresa un celular válido de 9 dígitos.';
   }
   return null;
 }
@@ -115,14 +138,32 @@ String? validateFreeText(
 
 /// `null` es válido: la fecha objetivo es opcional. Cuando se elige una,
 /// no puede quedar en el pasado (una meta con fecha vencida no tiene
-/// sentido de negocio).
+/// sentido de negocio). Misma regla para cualquier otra fecha futura
+/// opcional (p. ej. la próxima sesión).
 String? validateGoalDate(DateTime? value) {
   if (value == null) return null;
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final target = DateTime(value.year, value.month, value.day);
   if (target.isBefore(today)) {
-    return 'La fecha objetivo no puede ser anterior a hoy.';
+    return 'La fecha no puede ser anterior a hoy.';
+  }
+  return null;
+}
+
+/// Para fechas que documentan algo que ya ocurrió (p. ej. la fecha real de
+/// una sesión clínica ya realizada): no puede quedar en el futuro.
+/// [required] es `true` por defecto porque este tipo de fecha normalmente
+/// es la fecha central de un registro, no un dato opcional.
+String? validatePastOrTodayDate(DateTime? value, {bool required = true}) {
+  if (value == null) {
+    return required ? 'Selecciona una fecha.' : null;
+  }
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final target = DateTime(value.year, value.month, value.day);
+  if (target.isAfter(today)) {
+    return 'La fecha no puede ser futura.';
   }
   return null;
 }

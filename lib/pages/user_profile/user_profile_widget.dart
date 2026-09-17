@@ -4,6 +4,7 @@ import '/components/bottom_nav3/bottom_nav3_widget.dart';
 import '/components/button/button_widget.dart';
 import '/components/profile_menu_item/profile_menu_item_widget.dart';
 import '/components/profile_stat/profile_stat_widget.dart';
+import '/components/scroll_hiding_bottom_nav.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
@@ -188,7 +189,8 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                     height: 0.0,
                   ),
                   Expanded(
-                    child: Container(
+                    child: ScrollHidingBottomNav(
+                      content: Container(
                       child: SingleChildScrollView(
                         primary: false,
                         child: Column(
@@ -534,28 +536,6 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                       ),
                                     ),
                                   ),
-                                  InkWell(
-                                    splashColor: Colors.transparent,
-                                    focusColor: Colors.transparent,
-                                    hoverColor: Colors.transparent,
-                                    highlightColor: Colors.transparent,
-                                    onTap: () => context
-                                        .pushNamed(MyGoalsWidget.routeName),
-                                    child: wrapWithModel(
-                                      model: _model.profileMenuItemModel3,
-                                      updateCallback: () => safeSetState(() {}),
-                                      child: ProfileMenuItemWidget(
-                                        icon: Icon(
-                                          Icons.favorite_rounded,
-                                          color: FlutterFlowTheme.of(context)
-                                              .primary,
-                                          size: 22.0,
-                                        ),
-                                        title: 'Mis Objetivos',
-                                        subtitle: 'Metas de autocuidado',
-                                      ),
-                                    ),
-                                  ),
                                   Container(
                                     height: 16.0,
                                   ),
@@ -720,11 +700,12 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                         ),
                       ),
                     ),
-                  ),
-                  wrapWithModel(
+                  bottomNav: wrapWithModel(
                     model: _model.bottomNavModel,
                     updateCallback: () => safeSetState(() {}),
                     child: BottomNav3Widget(),
+                  ),
+                  ),
                   ),
                 ],
               ),

@@ -1,4 +1,5 @@
 import '/components/bottom_nav/bottom_nav_widget.dart';
+import '/components/scroll_hiding_bottom_nav.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
@@ -136,7 +137,8 @@ class _RegisterHubWidgetState extends State<RegisterHubWidget> {
           mainAxisSize: MainAxisSize.max,
           children: [
             Expanded(
-              child: SingleChildScrollView(
+              child: ScrollHidingBottomNav(
+                content: SingleChildScrollView(
                 primary: false,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -194,7 +196,7 @@ class _RegisterHubWidgetState extends State<RegisterHubWidget> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Elige qué quieres registrar. Son dos '
+                            'Elige qué quieres registrar. Son tres '
                             'herramientas independientes.',
                             style: FlutterFlowTheme.of(context)
                                 .bodyMedium
@@ -221,17 +223,26 @@ class _RegisterHubWidgetState extends State<RegisterHubWidget> {
                             onTap: () => context
                                 .pushNamed(BehavioralRecordWidget.routeName),
                           ),
+                          _optionCard(
+                            icon: Icons.flag_rounded,
+                            title: 'Registrar objetivo',
+                            subtitle:
+                                'Define una meta y los pasos para lograrla.',
+                            onTap: () =>
+                                context.pushNamed(GoalRecordWidget.routeName),
+                          ),
                         ].divide(SizedBox(height: 16.0)),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            wrapWithModel(
-              model: _bottomNavModel,
-              updateCallback: () => safeSetState(() {}),
-              child: BottomNavWidget(),
+              bottomNav: wrapWithModel(
+                model: _bottomNavModel,
+                updateCallback: () => safeSetState(() {}),
+                child: BottomNavWidget(),
+              ),
+              ),
             ),
           ],
         ),

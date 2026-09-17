@@ -4,6 +4,7 @@ import '/components/behavior_item/behavior_item_widget.dart';
 import '/components/bottom_nav4/bottom_nav4_widget.dart';
 import '/components/emotion_chip/emotion_chip_widget.dart';
 import '/components/progress_stat_card/progress_stat_card_widget.dart';
+import '/components/scroll_hiding_bottom_nav.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
@@ -66,7 +67,8 @@ class _WeeklyProgressWidgetState extends State<WeeklyProgressWidget> {
                 height: 0.0,
               ),
               Expanded(
-                child: Container(
+                child: ScrollHidingBottomNav(
+                  content: Container(
                   child: SingleChildScrollView(
                     primary: false,
                     child: Column(
@@ -1081,11 +1083,12 @@ class _WeeklyProgressWidgetState extends State<WeeklyProgressWidget> {
                     ),
                   ),
                 ),
-              ),
-              wrapWithModel(
+              bottomNav: wrapWithModel(
                 model: _model.bottomNavModel,
                 updateCallback: () => safeSetState(() {}),
                 child: BottomNav4Widget(),
+              ),
+              ),
               ),
             ],
           ),
