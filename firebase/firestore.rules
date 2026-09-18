@@ -249,16 +249,12 @@ service cloud.firestore {
         get(userRef(request.auth.uid)).data.role == 'psicologo';
     }
 
-    // An announcement a psychologist publishes for their linked patients
-    // (optional image/link). Read is open to any signed-in user; the
-    // patient home screen itself only ever queries for
-    // `psychologistRef == <their own assigned psychologist>`, so this
-    // isn't a global broadcast in practice, but the collection can't
-    // enforce that client-side filtering itself -- doing so here would
-    // need a `get()` on the patient's own doc per list result, which is
-    // the exact pitfall `isAssignedPsychologist()` warns about above.
-    // Only the authoring psychologist (or an admin) may create/edit/
-    // remove their own posts.
+    // An announcement a psychologist publishes (optional image/link),
+    // broadcast to every patient in the app -- not just that
+    // psychologist's own linked patients. Read is open to any signed-in
+    // user; the patient home screen queries the whole collection with no
+    // `psychologistRef` filter. Only the authoring psychologist (or an
+    // admin) may create/edit/remove their own posts.
     match /news/{document} {
       allow read: if request.auth != null;
       allow create: if isPsychologist() &&

@@ -7,13 +7,12 @@ import '/backend/schema/util/firestore_util.dart';
 import 'index.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 
-/// One announcement a psychologist publishes for their linked patients (a
-/// short text, optionally with an image and/or an external link). Shown as
-/// a swipeable card on the patient home screen -- only to the patients
-/// whose `psychologistRef` points at this news item's author, never as a
-/// global broadcast across every psychologist in the app. Only the
-/// authoring psychologist (or an admin) can edit/delete it; see
-/// `firebase/firestore.rules`.
+/// One announcement a psychologist publishes (a short text, optionally with
+/// an image and/or an external link). Shown as a swipeable card on every
+/// patient's home screen -- a global broadcast across all registered
+/// psychologists, not just the patient's own assigned one (see
+/// `NewsCarouselWidget`). Only the authoring psychologist (or an admin) can
+/// edit/delete it; see `firebase/firestore.rules`.
 class NewsRecord extends FirestoreRecord {
   NewsRecord._(
     DocumentReference reference,
@@ -42,9 +41,10 @@ class NewsRecord extends FirestoreRecord {
   String get linkUrl => _linkUrl ?? '';
   bool hasLinkUrl() => _linkUrl != null;
 
-  // "psychologistRef" field. The author -- also the field patients' feeds
-  // filter by (a patient only sees news from their own assigned
-  // psychologist).
+  // "psychologistRef" field. The author. The psychologist's own dashboard
+  // filters by this to list/manage their own posts, but the patient-facing
+  // feed does not filter by it -- patients see news from every
+  // psychologist.
   DocumentReference? _psychologistRef;
   DocumentReference? get psychologistRef => _psychologistRef;
   bool hasPsychologistRef() => _psychologistRef != null;

@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 
 /// Swipeable "Novedades" feed on the patient home screen: one card per
-/// announcement published by the patient's own assigned psychologist
-/// (never a feed of every psychologist in the app -- see the comment on
-/// the `news` collection in `firebase/firestore.rules`). Renders nothing
-/// if the patient has no assigned psychologist yet, or that psychologist
-/// hasn't published anything -- there's no empty state to show here, it
+/// announcement published by *any* registered psychologist in the app, not
+/// just the patient's own assigned one -- patients should be able to see
+/// what every psychologist is publishing (see the comment on the `news`
+/// collection in `firebase/firestore.rules`, which already allows any
+/// signed-in user to read any news doc). Renders nothing if no psychologist
+/// has published anything yet -- there's no empty state to show here, it
 /// just doesn't take up space on the home screen.
 class NewsCarouselWidget extends StatefulWidget {
   const NewsCarouselWidget({super.key});
@@ -33,21 +33,12 @@ class _NewsCarouselWidgetState extends State<NewsCarouselWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final psychologistRef = currentUserDocument?.psychologistRef;
-    if (psychologistRef == null) {
-      return const SizedBox.shrink();
-    }
-
     return StreamBuilder<List<NewsRecord>>(
-      // A single equality filter needs no composite index (unlike adding
-      // an `orderBy` on a different field), so the newest-first sort
-      // happens client-side below instead -- same tradeoff already made
-      // elsewhere in this app (see `_fetchPerPatient` in
-      // `psychologist_home_widget.dart`).
-      stream: queryNewsRecord(
-        queryBuilder: (newsRecord) =>
-            newsRecord.where('psychologistRef', isEqualTo: psychologistRef),
-      ),
+      // No filter: every patient sees news from every psychologist. Sorting
+      // happens client-side below (same tradeoff used elsewhere in this
+      // app, see `_fetchPerPatient` in `psychologist_home_widget.dart`) so
+      // this doesn't need a composite index either.
+      stream: queryNewsRecord(),
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const SizedBox.shrink();
