@@ -96,6 +96,18 @@ class UsersRecord extends FirestoreRecord {
   bool get active => _active ?? true;
   bool hasActive() => _active != null;
 
+  // "shareDataWithPsychologist" field. Only meaningful for role ==
+  // 'paciente': whether "Mis registros" (emotional/behavioral records,
+  // goals) is visible to their assigned psychologist, even while linked.
+  // Defaults to true (absent == sharing), so existing patients keep
+  // today's behavior. Written directly by the patient from "Privacidad y
+  // Datos" (see `updateShareDataWithPsychologist` in backend.dart); a
+  // Firestore trigger reacts to the change to retroactively apply it to
+  // already-existing records/behavioral_records (see firestore.rules).
+  bool? _shareDataWithPsychologist;
+  bool get shareDataWithPsychologist => _shareDataWithPsychologist ?? true;
+  bool hasShareDataWithPsychologist() => _shareDataWithPsychologist != null;
+
   void _initializeFields() {
     _email = snapshotData['email'] as String?;
     _displayName = snapshotData['display_name'] as String?;
@@ -112,6 +124,8 @@ class UsersRecord extends FirestoreRecord {
         snapshotData['psychologistLinkedAt'] as DateTime?;
     _lastActivityAt = snapshotData['lastActivityAt'] as DateTime?;
     _active = snapshotData['active'] as bool?;
+    _shareDataWithPsychologist =
+        snapshotData['shareDataWithPsychologist'] as bool?;
   }
 
   static CollectionReference get collection =>
@@ -188,7 +202,8 @@ class UsersRecordDocumentEquality implements Equality<UsersRecord> {
         e1?.phoneNumber == e2?.phoneNumber &&
         e1?.role == e2?.role &&
         e1?.specialty == e2?.specialty &&
-        e1?.psychologistRef == e2?.psychologistRef;
+        e1?.psychologistRef == e2?.psychologistRef &&
+        e1?.shareDataWithPsychologist == e2?.shareDataWithPsychologist;
   }
 
   @override
@@ -202,6 +217,7 @@ class UsersRecordDocumentEquality implements Equality<UsersRecord> {
         e?.role,
         e?.specialty,
         e?.psychologistRef,
+        e?.shareDataWithPsychologist,
       ]);
 
   @override

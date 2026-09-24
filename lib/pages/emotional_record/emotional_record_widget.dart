@@ -779,8 +779,12 @@ class _EmotionalRecordWidgetState extends State<EmotionalRecordWidget> {
                                             intensity: _model.intensityValue,
                                             userRef: currentUserReference,
                                             psychologistRef:
-                                                currentUserDocument
-                                                    ?.psychologistRef,
+                                                (currentUserDocument
+                                                            ?.shareDataWithPsychologist ??
+                                                        true)
+                                                    ? currentUserDocument
+                                                        ?.psychologistRef
+                                                    : null,
                                           ),
                                         );
 

@@ -12,6 +12,7 @@ import '/flutter_flow/flutter_flow_widgets.dart';
 import 'dart:ui';
 import '/flutter_flow/custom_functions.dart' as functions;
 import '/index.dart';
+import '/utils/error_messages.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -106,23 +107,85 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
   }
 
   Future<void> _showPrivacyDialog() async {
+    final hasPsychologist = currentUserDocument?.psychologistRef != null;
+    var sharing = currentUserDocument?.shareDataWithPsychologist ?? true;
+
     return showDialog(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Text('Privacidad y Datos'),
-          content: Text(
-            'Tus registros emocionales, tareas y preferencias están asociados '
-            'únicamente a tu cuenta y protegidos por reglas de acceso: solo tú '
-            'puedes leer o modificar tu propia información. Nadie más puede '
-            'ver tus registros.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text('Entendido'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: Text('Privacidad y Datos'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tu información está protegida por reglas de acceso: solo '
+                    'tú y, si estás vinculado, tu psicólogo asignado pueden '
+                    'ver tus datos. Nadie más tiene acceso.',
+                  ),
+                  if (hasPsychologist) ...[
+                    SizedBox(height: 16.0),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Permitir que mi psicólogo vea mis registros '
+                            '(emociones, conductas y objetivos)',
+                          ),
+                        ),
+                        Switch(
+                          value: sharing,
+                          onChanged: (value) async {
+                            setDialogState(() => sharing = value);
+                            try {
+                              await updateShareDataWithPsychologist(value);
+                            } catch (_) {
+                              setDialogState(() => sharing = !value);
+                              if (dialogContext.mounted) {
+                                ScaffoldMessenger.of(dialogContext)
+                                    .showSnackBar(
+                                  SnackBar(
+                                    content: Text(genericSaveErrorMessage(
+                                        'actualizar tu preferencia')),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    Text(
+                      sharing
+                          ? 'Tu psicólogo puede ver tus registros actuales y '
+                              'futuros.'
+                          : 'Tu psicólogo no puede ver ninguno de tus '
+                              'registros mientras esto esté desactivado. '
+                              'Puedes volver a activarlo cuando quieras.',
+                      style: FlutterFlowTheme.of(dialogContext)
+                          .bodySmall
+                          .override(
+                            font: GoogleFonts.outfit(),
+                            color: FlutterFlowTheme.of(dialogContext)
+                                .secondaryText,
+                            letterSpacing: 0.0,
+                          ),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text('Entendido'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

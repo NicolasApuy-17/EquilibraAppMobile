@@ -5,6 +5,7 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
 import 'dart:ui';
 import '/index.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -473,6 +474,49 @@ class _LoginScreenWidgetState extends State<LoginScreenWidget> {
                                 width: 0.0,
                               ),
                               borderRadius: BorderRadius.circular(16.0),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsetsDirectional.only(top: 8.0),
+                            child: RichText(
+                              textAlign: TextAlign.center,
+                              text: TextSpan(
+                                style: FlutterFlowTheme.of(context)
+                                    .labelSmall
+                                    .override(
+                                      font: GoogleFonts.outfit(),
+                                      color: FlutterFlowTheme.of(context)
+                                          .secondaryText,
+                                      letterSpacing: 0.0,
+                                    ),
+                                children: [
+                                  TextSpan(text: 'Al continuar, aceptas '),
+                                  TextSpan(
+                                    text: 'nuestros Términos y Condiciones',
+                                    style: TextStyle(
+                                      color: FlutterFlowTheme.of(context)
+                                          .primary,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () => context.pushNamed(
+                                          TermsPrivacyWidget.routeName),
+                                  ),
+                                  TextSpan(text: ' y '),
+                                  TextSpan(
+                                    text: 'Política de Privacidad',
+                                    style: TextStyle(
+                                      color: FlutterFlowTheme.of(context)
+                                          .primary,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () => context.pushNamed(
+                                          TermsPrivacyWidget.routeName),
+                                  ),
+                                  TextSpan(text: '.'),
+                                ],
+                              ),
                             ),
                           ),
                         ].divide(SizedBox(height: 16.0)),

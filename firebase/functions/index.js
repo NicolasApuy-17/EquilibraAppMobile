@@ -23,6 +23,7 @@ const {
   onRecordActivity,
   onBehavioralRecordActivity,
   onTaskActivity,
+  onShareDataWithPsychologistChanged,
 } = require("./psychologists");
 exports.createPsychologist = createPsychologist;
 exports.linkPsychologistByCode = linkPsychologistByCode;
@@ -35,6 +36,7 @@ exports.sendConversationMessage = sendConversationMessage;
 exports.onRecordActivity = onRecordActivity;
 exports.onBehavioralRecordActivity = onBehavioralRecordActivity;
 exports.onTaskActivity = onTaskActivity;
+exports.onShareDataWithPsychologistChanged = onShareDataWithPsychologistChanged;
 
 const {
   onRecordNotification,

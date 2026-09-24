@@ -7,6 +7,7 @@ import '/services/psychologist_service.dart';
 import '/utils/validators.dart';
 import 'dart:ui';
 import '/index.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +35,9 @@ class _CreateAccountScreenWidgetState extends State<CreateAccountScreenWidget> {
   // usage in the "Crear cuenta" button below).
   final _psychologistCodeController = TextEditingController();
   final _psychologistService = PsychologistService();
+
+  bool _acceptedTerms = false;
+  String? _termsError;
 
   @override
   void initState() {
@@ -685,10 +689,114 @@ class _CreateAccountScreenWidgetState extends State<CreateAccountScreenWidget> {
                                   ),
                             ),
                           ),
+                          InkWell(
+                            onTap: () => setState(() {
+                              _acceptedTerms = !_acceptedTerms;
+                              if (_acceptedTerms) _termsError = null;
+                            }),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Checkbox(
+                                  value: _acceptedTerms,
+                                  onChanged: (value) => setState(() {
+                                    _acceptedTerms = value ?? false;
+                                    if (_acceptedTerms) _termsError = null;
+                                  }),
+                                  activeColor:
+                                      FlutterFlowTheme.of(context).primary,
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: EdgeInsetsDirectional.only(
+                                        top: 14.0),
+                                    child: RichText(
+                                      text: TextSpan(
+                                        style: FlutterFlowTheme.of(context)
+                                            .bodySmall
+                                            .override(
+                                              font: GoogleFonts.outfit(),
+                                              color: FlutterFlowTheme.of(
+                                                      context)
+                                                  .secondaryText,
+                                              letterSpacing: 0.0,
+                                            ),
+                                        children: [
+                                          TextSpan(
+                                              text: 'He leído y acepto los '),
+                                          TextSpan(
+                                            text: 'Términos y Condiciones',
+                                            style: TextStyle(
+                                              color: FlutterFlowTheme.of(
+                                                      context)
+                                                  .primary,
+                                              decoration:
+                                                  TextDecoration.underline,
+                                            ),
+                                            recognizer: TapGestureRecognizer()
+                                              ..onTap = () => context
+                                                  .pushNamed(
+                                                      TermsPrivacyWidget
+                                                          .routeName),
+                                          ),
+                                          TextSpan(text: ' y la '),
+                                          TextSpan(
+                                            text: 'Política de Privacidad',
+                                            style: TextStyle(
+                                              color: FlutterFlowTheme.of(
+                                                      context)
+                                                  .primary,
+                                              decoration:
+                                                  TextDecoration.underline,
+                                            ),
+                                            recognizer: TapGestureRecognizer()
+                                              ..onTap = () => context
+                                                  .pushNamed(
+                                                      TermsPrivacyWidget
+                                                          .routeName),
+                                          ),
+                                          TextSpan(
+                                            text:
+                                                '. Tus datos se usan de forma '
+                                                'segura y únicamente para tu '
+                                                'tratamiento con tu '
+                                                'psicólogo.',
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_termsError != null)
+                            Padding(
+                              padding: EdgeInsetsDirectional.only(
+                                  start: 12.0, bottom: 4.0),
+                              child: Text(
+                                _termsError!,
+                                style: FlutterFlowTheme.of(context)
+                                    .bodySmall
+                                    .override(
+                                      font: GoogleFonts.outfit(),
+                                      color: FlutterFlowTheme.of(context)
+                                          .error,
+                                      letterSpacing: 0.0,
+                                    ),
+                              ),
+                            ),
                           FFButtonWidget(
                             onPressed: () async {
                               if (_model.formKey.currentState == null ||
                                   !_model.formKey.currentState!.validate()) {
+                                return;
+                              }
+                              if (!_acceptedTerms) {
+                                setState(() => _termsError =
+                                    'Debes aceptar los Términos y Condiciones '
+                                    'y la Política de Privacidad para '
+                                    'continuar.');
                                 return;
                               }
 

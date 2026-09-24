@@ -52,6 +52,29 @@ service cloud.firestore {
       return get(userRef(request.auth.uid)).data.get('psychologistRef', null);
     }
 
+    // Whether `patientUid` currently allows their assigned psychologist to
+    // see "Mis registros" (emotional/behavioral records, goals) -- the
+    // `shareDataWithPsychologist` toggle in the patient's "Privacidad y
+    // Datos" screen. Absent means true (opt-out, not opt-in), so existing
+    // patients keep today's behavior with no migration needed.
+    function patientIsSharingData(patientUid) {
+      return get(userRef(patientUid)).data.get('shareDataWithPsychologist', true) == true;
+    }
+
+    // Same as `isAssignedPsychologist`, but also requires the patient
+    // hasn't opted out via `patientIsSharingData`. Used only by `goals`
+    // below, whose read rule needs the *live* value: unlike
+    // records/behavioral_records, `goals` isn't denormalized, so this adds
+    // no new list-query risk (it's already `isAssignedPsychologist`'s
+    // existing single-extra-`get()` shape, just with one more `get()` of
+    // the same document). Deliberately NOT folded into
+    // `isAssignedPsychologist` itself, which `patient_notes` below also
+    // uses -- the sharing toggle intentionally doesn't affect the
+    // psychologist's own private working note about the patient.
+    function isAssignedPsychologistAndSharing(patientUid) {
+      return isAssignedPsychologist(patientUid) && patientIsSharingData(patientUid);
+    }
+
     // Fields a signed-in user may set on their own `users/{uid}` doc
     // directly from the client (see `maybeCreateUser` / `updateUserProfile`
     // in lib/backend/backend.dart). Everything else on that document --
@@ -59,7 +82,7 @@ service cloud.firestore {
     // `linkCode`, `specialty` -- is only ever written by Cloud Functions
     // using the Admin SDK, which bypasses these rules entirely.
     function selfManagedUserFields() {
-      return ['email', 'display_name', 'photo_url', 'uid', 'phone_number', 'created_time'];
+      return ['email', 'display_name', 'photo_url', 'uid', 'phone_number', 'created_time', 'shareDataWithPsychologist'];
     }
 
     // `psychologistRef` on a patient-authored document (records,
@@ -76,10 +99,26 @@ service cloud.firestore {
       return request.resource.data.get('psychologistRef', null) == callerPsychologistRef();
     }
 
+    // Like `patientRecordPsychologistRefIsValid()`, but for `records`/
+    // `behavioral_records` specifically: when the patient has turned off
+    // `shareDataWithPsychologist`, a newly created record must be stamped
+    // with no psychologist at all, even though they're still linked -- so
+    // it doesn't leak to the psychologist's `psychologistRef`-filtered
+    // reads from the moment sharing is off. A Firestore trigger
+    // (`onShareDataWithPsychologistChanged` in firebase/functions) applies
+    // the same rule retroactively to already-existing records. `tasks`/
+    // `session_requests` keep using the unconditional
+    // `patientRecordPsychologistRefIsValid()` above -- the sharing toggle
+    // intentionally only covers "Mis registros", not tasks or scheduling.
+    function sharedRecordPsychologistRefIsValid() {
+      return request.resource.data.get('psychologistRef', null) ==
+        (patientIsSharingData(request.auth.uid) ? callerPsychologistRef() : null);
+    }
+
     match /records/{document} {
       allow create: if request.auth != null &&
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
-        patientRecordPsychologistRefIsValid();
+        sharedRecordPsychologistRefIsValid();
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
          resource.data.get('psychologistRef', null) == userRef(request.auth.uid) ||
@@ -96,7 +135,7 @@ service cloud.firestore {
     match /behavioral_records/{document} {
       allow create: if request.auth != null &&
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
-        patientRecordPsychologistRefIsValid();
+        sharedRecordPsychologistRefIsValid();
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
          resource.data.get('psychologistRef', null) == userRef(request.auth.uid) ||
@@ -287,7 +326,7 @@ service cloud.firestore {
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         isAssignedPsychologist(resource.data.userRef.id));
+         isAssignedPsychologistAndSharing(resource.data.userRef.id));
       allow update, delete: if request.auth != null &&
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
     }

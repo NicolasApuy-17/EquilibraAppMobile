@@ -224,6 +224,11 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           builder: (context, params) => WelcomeScreenWidget(),
         ),
         FFRoute(
+          name: TermsPrivacyWidget.routeName,
+          path: TermsPrivacyWidget.routePath,
+          builder: (context, params) => TermsPrivacyWidget(),
+        ),
+        FFRoute(
           name: CreateAccountScreenWidget.routeName,
           path: CreateAccountScreenWidget.routePath,
           builder: (context, params) => CreateAccountScreenWidget(),

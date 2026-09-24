@@ -674,3 +674,73 @@ exports.onBehavioralRecordActivity = activityTrigger(
   "behavioral_records/{recordId}"
 );
 exports.onTaskActivity = activityTrigger("tasks/{taskId}");
+
+/**
+ * Fires on every write to a patient's `users/{uid}` doc. When
+ * `shareDataWithPsychologist` (the toggle in "Privacidad y Datos")
+ * actually changes value, retroactively rewrites the denormalized
+ * `psychologistRef` on that patient's own `records`/`behavioral_records`
+ * documents to match: null when sharing is turned off (hiding them from
+ * the psychologist's `psychologistRef`-filtered reads, same as if the
+ * record had no psychologist), or the patient's current `psychologistRef`
+ * when turned back on. `goals` needs no backfill -- its read rule checks
+ * the live value directly via `isAssignedPsychologistAndSharing` (see
+ * firestore.rules), since it was never denormalized in the first place.
+ * `tasks`/`session_requests` are deliberately left alone: the sharing
+ * toggle only covers "Mis registros", not tasks or scheduling.
+ */
+exports.onShareDataWithPsychologistChanged = onDocumentWritten(
+  "users/{uid}",
+  async (event) => {
+    const before = event.data?.before?.exists ? event.data.before.data() : null;
+    const after = event.data?.after?.exists ? event.data.after.data() : null;
+    if (!after || after.role !== "paciente") return null;
+
+    const beforeSharing = before?.shareDataWithPsychologist ?? true;
+    const afterSharing = after.shareDataWithPsychologist ?? true;
+    if (beforeSharing === afterSharing) return null;
+
+    const db = admin.firestore();
+    const patientRef = db.collection("users").doc(event.params.uid);
+    const newPsychologistRef = afterSharing ? after.psychologistRef ?? null : null;
+
+    async function applyToCollection(collectionName) {
+      const snap = await db
+        .collection(collectionName)
+        .where("userRef", "==", patientRef)
+        .get();
+      if (snap.empty) return;
+      let batch = db.batch();
+      let pending = 0;
+      for (const doc of snap.docs) {
+        batch.update(doc.ref, { psychologistRef: newPsychologistRef });
+        pending++;
+        if (pending === 400) {
+          await batch.commit();
+          batch = db.batch();
+          pending = 0;
+        }
+      }
+      if (pending > 0) await batch.commit();
+    }
+
+    try {
+      await Promise.all([
+        applyToCollection("records"),
+        applyToCollection("behavioral_records"),
+      ]);
+    } catch (error) {
+      console.error(
+        "[onShareDataWithPsychologistChanged] failed for",
+        patientRef.path,
+        error
+      );
+      await logServerError(
+        `onShareDataWithPsychologistChanged failed for ${patientRef.path}`,
+        error,
+        event.params.uid
+      );
+    }
+    return null;
+  }
+);

@@ -9,6 +9,7 @@ export '/pages/account_panel/account_panel_widget.dart' show AccountPanelWidget;
 export '/pages/help_center/help_center_widget.dart' show HelpCenterWidget;
 export '/pages/support_contact/support_contact_widget.dart'
     show SupportContactWidget;
+export '/pages/legal/terms_privacy_widget.dart' show TermsPrivacyWidget;
 export '/pages/goal_record/goal_record_widget.dart' show GoalRecordWidget;
 export '/pages/home_screen/home_screen_widget.dart' show HomeScreenWidget;
 export '/pages/my_records/my_records_widget.dart' show MyRecordsWidget;

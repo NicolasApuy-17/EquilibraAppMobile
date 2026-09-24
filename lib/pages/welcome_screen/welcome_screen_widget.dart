@@ -2,6 +2,7 @@ import '/components/welcome_action_button/welcome_action_button_widget.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
+import '/index.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -239,31 +240,37 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text(
-                                'Términos de Servicio',
-                                style: FlutterFlowTheme.of(context)
-                                    .labelSmall
-                                    .override(
-                                      font: GoogleFonts.outfit(
+                              InkWell(
+                                onTap: () => context
+                                    .pushNamed(TermsPrivacyWidget.routeName),
+                                child: Text(
+                                  'Términos de Servicio',
+                                  style: FlutterFlowTheme.of(context)
+                                      .labelSmall
+                                      .override(
+                                        font: GoogleFonts.outfit(
+                                          fontWeight:
+                                              FlutterFlowTheme.of(context)
+                                                  .labelSmall
+                                                  .fontWeight,
+                                          fontStyle:
+                                              FlutterFlowTheme.of(context)
+                                                  .labelSmall
+                                                  .fontStyle,
+                                        ),
+                                        color: FlutterFlowTheme.of(context)
+                                            .onSurface,
+                                        letterSpacing: 0.0,
                                         fontWeight: FlutterFlowTheme.of(context)
                                             .labelSmall
                                             .fontWeight,
                                         fontStyle: FlutterFlowTheme.of(context)
                                             .labelSmall
                                             .fontStyle,
+                                        decoration: TextDecoration.underline,
+                                        lineHeight: 1.4,
                                       ),
-                                      color: FlutterFlowTheme.of(context)
-                                          .onSurface,
-                                      letterSpacing: 0.0,
-                                      fontWeight: FlutterFlowTheme.of(context)
-                                          .labelSmall
-                                          .fontWeight,
-                                      fontStyle: FlutterFlowTheme.of(context)
-                                          .labelSmall
-                                          .fontStyle,
-                                      decoration: TextDecoration.underline,
-                                      lineHeight: 1.4,
-                                    ),
+                                ),
                               ),
                               Text(
                                 'y',
@@ -290,31 +297,37 @@ class _WelcomeScreenWidgetState extends State<WelcomeScreenWidget> {
                                       lineHeight: 1.4,
                                     ),
                               ),
-                              Text(
-                                'Privacidad',
-                                style: FlutterFlowTheme.of(context)
-                                    .labelSmall
-                                    .override(
-                                      font: GoogleFonts.outfit(
+                              InkWell(
+                                onTap: () => context
+                                    .pushNamed(TermsPrivacyWidget.routeName),
+                                child: Text(
+                                  'Privacidad',
+                                  style: FlutterFlowTheme.of(context)
+                                      .labelSmall
+                                      .override(
+                                        font: GoogleFonts.outfit(
+                                          fontWeight:
+                                              FlutterFlowTheme.of(context)
+                                                  .labelSmall
+                                                  .fontWeight,
+                                          fontStyle:
+                                              FlutterFlowTheme.of(context)
+                                                  .labelSmall
+                                                  .fontStyle,
+                                        ),
+                                        color: FlutterFlowTheme.of(context)
+                                            .onSurface,
+                                        letterSpacing: 0.0,
                                         fontWeight: FlutterFlowTheme.of(context)
                                             .labelSmall
                                             .fontWeight,
                                         fontStyle: FlutterFlowTheme.of(context)
                                             .labelSmall
                                             .fontStyle,
+                                        decoration: TextDecoration.underline,
+                                        lineHeight: 1.4,
                                       ),
-                                      color: FlutterFlowTheme.of(context)
-                                          .onSurface,
-                                      letterSpacing: 0.0,
-                                      fontWeight: FlutterFlowTheme.of(context)
-                                          .labelSmall
-                                          .fontWeight,
-                                      fontStyle: FlutterFlowTheme.of(context)
-                                          .labelSmall
-                                          .fontStyle,
-                                      decoration: TextDecoration.underline,
-                                      lineHeight: 1.4,
-                                    ),
+                                ),
                               ),
                             ].divide(SizedBox(width: 4.0)),
                           ),

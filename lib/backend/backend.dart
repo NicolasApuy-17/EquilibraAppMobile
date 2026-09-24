@@ -708,3 +708,18 @@ Future updateUserProfile({
   final snapshot = await reference.get();
   currentUserDocument = UsersRecord.fromSnapshot(snapshot);
 }
+
+// Turns sharing "Mis registros" (emotional/behavioral records, goals) with
+// the current user's assigned psychologist on or off (see "Privacidad y
+// Datos" in the profile). A Firestore trigger
+// (`onShareDataWithPsychologistChanged`, firebase/functions) reacts to this
+// write and retroactively applies it to already-existing
+// records/behavioral_records too -- `goals` needs no backfill since its
+// read rule checks the live value directly (see firestore.rules).
+Future<void> updateShareDataWithPsychologist(bool value) async {
+  final reference = currentUserReference;
+  if (reference == null) return;
+  await reference.update({'shareDataWithPsychologist': value});
+  final snapshot = await reference.get();
+  currentUserDocument = UsersRecord.fromSnapshot(snapshot);
+}

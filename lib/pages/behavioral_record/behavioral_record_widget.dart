@@ -599,8 +599,12 @@ class _BehavioralRecordWidgetState extends State<BehavioralRecordWidget> {
                                             notesText.isEmpty ? null : notesText,
                                         createdAt: getCurrentTimestamp,
                                         userRef: currentUserReference,
-                                        psychologistRef: currentUserDocument
-                                            ?.psychologistRef,
+                                        psychologistRef: (currentUserDocument
+                                                    ?.shareDataWithPsychologist ??
+                                                true)
+                                            ? currentUserDocument
+                                                ?.psychologistRef
+                                            : null,
                                       ),
                                     );
 
