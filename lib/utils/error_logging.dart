@@ -17,6 +17,11 @@ Future<void> logAppError({
   StackTrace? stackTrace,
   bool fatal = false,
 }) async {
+  // Exception messages can contain document payloads, emails or clinical text.
+  // Retain the error category/code and stack without uploading the raw message.
+  final safeMessage = error is FirebaseException
+      ? '${error.plugin}/${error.code}'
+      : error.runtimeType.toString();
   // Crashlytics has no web plugin implementation -- calling it there throws
   // an assertion failure ("pluginConstants['isCrashlyticsCollectionEnabled']
   // != null is not true") on every single logAppError call. `unawaited`
@@ -26,7 +31,7 @@ Future<void> logAppError({
   if (!kIsWeb) {
     try {
       await FirebaseCrashlytics.instance.recordError(
-        error,
+        safeMessage,
         stackTrace,
         reason: context,
         fatal: fatal,
@@ -39,7 +44,7 @@ Future<void> logAppError({
   try {
     await AppErrorsRecord.collection.add(createAppErrorsRecordData(
       context: context,
-      message: error.toString(),
+      message: safeMessage,
       stackTrace: stackTrace?.toString().split('\n').take(20).join('\n'),
       userRef: currentUserReference,
       role: currentUserDocument?.role,

@@ -190,6 +190,8 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                   ],
                   SizedBox(height: 16.0),
                   const PrivacyLinks(),
+                  const SizedBox(height: 16.0),
+                  const DeleteMyAccountButton(),
                 ],
               )),
               actions: [

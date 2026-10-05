@@ -1,3 +1,4 @@
+import '/utils/development_log.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -68,7 +69,7 @@ class FirebaseAuthManager extends AuthManager
   Future deleteUser(BuildContext context) async {
     try {
       if (!loggedIn) {
-        print('Error: delete user attempted with no logged in user!');
+        developmentLog('Error: delete user attempted with no logged in user!');
         return;
       }
       await currentUser?.delete();
@@ -88,7 +89,7 @@ class FirebaseAuthManager extends AuthManager
   }) async {
     try {
       if (!loggedIn) {
-        print('Error: update email attempted with no logged in user!');
+        developmentLog('Error: update email attempted with no logged in user!');
         return;
       }
       await currentUser?.updateEmail(email);
@@ -109,7 +110,7 @@ class FirebaseAuthManager extends AuthManager
   }) async {
     try {
       if (!loggedIn) {
-        print('Error: update password attempted with no logged in user!');
+        developmentLog('Error: update password attempted with no logged in user!');
         return;
       }
       await currentUser?.updatePassword(newPassword);

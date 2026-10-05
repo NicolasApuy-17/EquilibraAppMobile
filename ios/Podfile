@@ -32,7 +32,8 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-  pod 'FirebaseFirestore', :git => 'https://github.com/invertase/firestore-ios-sdk-frameworks.git', :tag => '11.13.0'
+  # Resolve the official Firestore pod through cloud_firestore, keeping it in
+  # sync with firebase_core instead of pinning a third-party binary framework.
 end
 
 post_install do |installer|
