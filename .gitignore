@@ -9,11 +9,29 @@ build/
 
 # Android
 android/.gradle/
+android/.kotlin/
 android/local.properties
+android/key.properties
+*.jks
+*.keystore
+.release-tools/
+.release-test/
+release/*.aab
+
+# Local build, emulator and verification evidence
+/account-deletion-*.txt
+/button-style-*.txt
+/firebase-release-*.txt
+/pixel-*.txt
+/release-*.txt
+/review-*.txt
+/role-deletion-*.txt
+/release/pixel-*
 
 # iOS
 ios/Pods/
 ios/.symlinks/
+ios/Flutter/ephemeral/
 
 # IDEs
 .idea/

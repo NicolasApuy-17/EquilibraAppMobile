@@ -536,6 +536,7 @@ Future<int> queryCollectionCount(
 
   return query.count().get().catchError((err) {
     print('Error querying $collection: $err');
+    throw err;
   }).then((value) => value.count!);
 }
 
@@ -554,16 +555,7 @@ Stream<List<T>> queryCollection<T>(
   return query.snapshots().handleError((err) {
     print('Error querying $collection: $err');
     throw err;
-  }).map((s) => s.docs
-      .map(
-        (d) => safeGet(
-          () => recordBuilder(d),
-          (e) => print('Error serializing doc ${d.reference.path}:\n$e'),
-        ),
-      )
-      .where((d) => d != null)
-      .map((d) => d!)
-      .toList());
+  }).map((s) => s.docs.map((doc) => recordBuilder(doc)).toList());
 }
 
 Future<List<T>> queryCollectionOnce<T>(
@@ -578,16 +570,9 @@ Future<List<T>> queryCollectionOnce<T>(
   if (limit > 0 || singleRecord) {
     query = query.limit(singleRecord ? 1 : limit);
   }
-  return query.get().then((s) => s.docs
-      .map(
-        (d) => safeGet(
-          () => recordBuilder(d),
-          (e) => print('Error serializing doc ${d.reference.path}:\n$e'),
-        ),
-      )
-      .where((d) => d != null)
-      .map((d) => d!)
-      .toList());
+  return query
+      .get()
+      .then((s) => s.docs.map((doc) => recordBuilder(doc)).toList());
 }
 
 Filter filterIn(String field, List? list) => (list?.isEmpty ?? true)

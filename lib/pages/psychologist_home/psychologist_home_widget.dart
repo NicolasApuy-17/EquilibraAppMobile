@@ -154,53 +154,32 @@ class _PsychologistHomeWidgetState extends State<PsychologistHomeWidget> {
         patientsSnap.docs.map((d) => UsersRecord.fromSnapshot(d)).toList();
     final patientsById = {for (final p in patients) p.reference.id: p};
     final patientRefs = patients.map((p) => p.reference).toList();
+    final sharedPatientRefs = patients
+        .where((patient) => patient.shareDataWithPsychologist)
+        .map((patient) => patient.reference)
+        .toList();
 
     if (patientRefs.isEmpty) return _emptyDashboard;
 
-    // One query *per patient*, not a single `userRef whereIn patientRefs`
-    // query: Firestore security rules aren't a post-hoc filter -- a query
-    // is only allowed if Firestore can prove every document it could
-    // possibly return satisfies the rule, and it can't prove that for a
-    // multi-value `whereIn` when the rule needs a `get()` (like
-    // `isAssignedPsychologist` does here) to decide each document. A
-    // single-value `==` query it *can* prove -- but only for fields the
-    // rule itself checks. `records`/`behavioral_records`/`tasks` are
-    // patient-owned, so a `userRef == ref` filter alone isn't enough: the
-    // read rule also checks `psychologistRef`, and for a `list` query
-    // Firestore can only read `resource.data` fields that are *also*
-    // constrained by the query's own `where` clauses -- any field outside
-    // that (like `psychologistRef` here, if left unfiltered) reads as
-    // undefined while Firestore proves the query safe, and the whole read
-    // is denied (confirmed with the Firestore Rules emulator -- see
-    // registros_tab.dart). Hence the second filter below on every one of
-    // these per-patient queries; multiple equality filters like this don't
-    // need a composite index. Each collection's fetch is wrapped so one
-    // patient's (or one collection's) failure doesn't blank out data that
-    // did load correctly.
+    // Each patient-scoped query uses the live assignment and consent rules.
+    // Skip private records; tasks and sessions retain their own permissions.
     final records = await _fetchPerPatient(
-      patientRefs,
-      (ref) => RecordsRecord.collection
-          .where('userRef', isEqualTo: ref)
-          .where('psychologistRef', isEqualTo: myRef)
-          .get(),
+      sharedPatientRefs,
+      (ref) => RecordsRecord.collection.where('userRef', isEqualTo: ref).get(),
       RecordsRecord.fromSnapshot,
       context: 'dashboard records',
     );
     final behavioralRecords = await _fetchPerPatient(
-      patientRefs,
+      sharedPatientRefs,
       (ref) => BehavioralRecordsRecord.collection
           .where('userRef', isEqualTo: ref)
-          .where('psychologistRef', isEqualTo: myRef)
           .get(),
       BehavioralRecordsRecord.fromSnapshot,
       context: 'dashboard behavioral records',
     );
     final tasks = await _fetchPerPatient(
       patientRefs,
-      (ref) => TasksRecord.collection
-          .where('userRef', isEqualTo: ref)
-          .where('psychologistRef', isEqualTo: myRef)
-          .get(),
+      (ref) => TasksRecord.collection.where('userRef', isEqualTo: ref).get(),
       TasksRecord.fromSnapshot,
       context: 'dashboard tasks',
     );
@@ -877,6 +856,7 @@ class _AlertRow extends StatelessWidget {
         onTap: () => context.pushNamed(
           PsychologistPatientDetailWidget.routeName,
           extra: entry.patient,
+          queryParameters: {'patientId': entry.patient.reference.id},
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -933,6 +913,7 @@ class _RecentRecordRow extends StatelessWidget {
         onTap: () => context.pushNamed(
           PsychologistPatientDetailWidget.routeName,
           extra: entry.patient,
+          queryParameters: {'patientId': entry.patient.reference.id},
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -1026,6 +1007,7 @@ class _PatientCard extends StatelessWidget {
         onTap: () => context.pushNamed(
           PsychologistPatientDetailWidget.routeName,
           extra: patient,
+          queryParameters: {'patientId': patient.reference.id},
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -1129,12 +1111,7 @@ class _PatientCard extends StatelessWidget {
                   children: [
                     InkWell(
                       borderRadius: BorderRadius.circular(20.0),
-                      // `conversationId` is always the patient's own uid --
-                      // both sides open the exact same conversation (see
-                      // PsychologistChatWidget's own doc comment). A
-                      // separate tap target from the card itself, so
-                      // opening the chat doesn't require going through the
-                      // full patient detail screen first.
+                      // The chat resolves this patient UID to the current conversation.
                       onTap: () => context.pushNamed(
                         PsychologistChatWidget.routeName,
                         extra: patient.reference.id,

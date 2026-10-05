@@ -32,7 +32,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.mycompany.equilibra"
+    namespace "pe.com.equilibra.app"
     compileSdkVersion 36
     ndkVersion "28.2.13676358"
 
@@ -56,8 +56,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "com.mycompany.equilibra"
+        applicationId "pe.com.equilibra.app"
         // firebase-auth 23.x requires minSdk 23; flutter.minSdkVersion
         // (21) is too low and fails the manifest merge.
         minSdkVersion 23
@@ -70,17 +69,39 @@ android {
        release {
            keyAlias keystoreProperties['keyAlias']
            keyPassword keystoreProperties['keyPassword']
-           storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+           storeFile keystoreProperties['storeFile'] ? rootProject.file(keystoreProperties['storeFile']) : null
            storePassword keystoreProperties['storePassword']
        }
    }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig signingConfigs.debug
+            // Production artifacts must use the configured publishing identity.
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+gradle.taskGraph.whenReady { graph ->
+    def googleConfig = new groovy.json.JsonSlurper().parse(file('google-services.json'))
+    if (googleConfig.project_info.project_id != 'equilibra-w5rl2h' ||
+        !googleConfig.client.any { it.client_info.android_client_info.package_name == 'pe.com.equilibra.app' }) {
+        throw new GradleException('Descarga google-services.json de la app pe.com.equilibra.app registrada en el proyecto existente equilibra-w5rl2h. No reutilices la configuración de otro package.')
+    }
+    if (graph.allTasks.any { it.project == project && it.name.endsWith('Release') }) {
+        def requiredKeys = ['keyAlias', 'keyPassword', 'storeFile', 'storePassword']
+        if (requiredKeys.any { !keystoreProperties[it] }) {
+            throw new GradleException('Para compilar release, configura android/key.properties con la clave de publicación. Debug no requiere esta configuración.')
+        }
+        def signingStore = java.security.KeyStore.getInstance(java.security.KeyStore.getDefaultType())
+        rootProject.file(keystoreProperties['storeFile']).withInputStream { input ->
+            signingStore.load(input, keystoreProperties['storePassword'].toCharArray())
+        }
+        def signingCertificate = signingStore.getCertificate(keystoreProperties['keyAlias'])
+        if (signingCertificate == null ||
+            signingCertificate.subjectX500Principal.name.toLowerCase().contains('cn=android debug')) {
+            throw new GradleException('Release requiere un certificado de carga de producción; Android Debug no está permitido.')
         }
     }
 }

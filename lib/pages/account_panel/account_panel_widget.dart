@@ -1,4 +1,5 @@
 import '/auth/firebase_auth/auth_util.dart';
+import '/components/delete_my_account_button.dart';
 import '/flutter_flow/custom_functions.dart' as functions;
 import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
@@ -13,10 +14,8 @@ import 'package:google_fonts/google_fonts.dart';
 /// "Mi Perfil" (UserProfileWidget), which is full of patient-only content
 /// (metas, centro de ayuda, etc.), an admin or psychologist has nothing
 /// role-appropriate to show here yet. Deliberately kept small: photo, name,
-/// email/role, and the one thing they actually need -- a way into
-/// EditProfileWidget to change their name/phone/photo. More account-level
-/// options belong here as they're built, rather than back on the header
-/// button itself.
+/// email/role, a way into EditProfileWidget to change their name/phone/photo,
+/// and verified personal account deletion as the last action.
 class AccountPanelWidget extends StatelessWidget {
   const AccountPanelWidget({super.key});
 
@@ -154,6 +153,9 @@ class AccountPanelWidget extends StatelessWidget {
                         onTap: () =>
                             context.pushNamed(EditProfileWidget.routeName),
                       ),
+                      const SizedBox(height: 32.0),
+                      const DeleteMyAccountButton(),
+                      const SizedBox(height: 32.0),
                     ],
                   );
                 },

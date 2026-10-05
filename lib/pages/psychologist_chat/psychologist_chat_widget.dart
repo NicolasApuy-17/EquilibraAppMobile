@@ -7,15 +7,8 @@ import '/services/psychologist_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// One patient's chat with their assigned psychologist. [conversationId] is
-/// always the patient's own uid (see `conversations/{patientUid}` in
-/// firestore.rules / the `linkPsychologistByCode` Cloud Function) — both the
-/// patient and their psychologist open the exact same conversation id.
-///
-/// Messages are read live via `.snapshots()` (protected by Firestore rules:
-/// only the two participants can read) and sent through the
-/// `sendConversationMessage` Cloud Function, which validates the sender is
-/// actually a participant before writing anything.
+/// Opens an immutable conversation ID or resolves a legacy patient UID to
+/// their active conversation. Historical participants are never overwritten.
 class PsychologistChatWidget extends StatefulWidget {
   const PsychologistChatWidget({super.key, required this.conversationId});
 
@@ -36,10 +29,13 @@ class _PsychologistChatWidgetState extends State<PsychologistChatWidget> {
   String? _otherPartyName;
   bool _isSending = false;
   bool _loadFailed = false;
+  String? _resolvedConversationId;
+  String? _pendingMessageId;
+  String? _pendingText;
 
   DocumentReference get _conversationRef =>
       FirebaseFirestore.instance.collection('conversations').doc(
-            widget.conversationId,
+            _resolvedConversationId ?? widget.conversationId,
           );
 
   @override
@@ -50,6 +46,20 @@ class _PsychologistChatWidgetState extends State<PsychologistChatWidget> {
 
   Future<void> _loadOtherParty() async {
     try {
+      if (widget.conversationId.isEmpty) {
+        if (mounted) setState(() => _loadFailed = true);
+        return;
+      }
+      // The existing entry points pass a patient UID; newer notifications
+      // already contain the immutable conversation ID.
+      try {
+        final patient =
+            await UsersRecord.collection.doc(widget.conversationId).get();
+        final data = patient.data() as Map<String, dynamic>?;
+        _resolvedConversationId = data?['activeConversationId'] as String?;
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied') rethrow;
+      }
       final snap = await _conversationRef.get();
       final data = snap.data() as Map<String, dynamic>?;
       if (data == null) {
@@ -92,13 +102,23 @@ class _PsychologistChatWidgetState extends State<PsychologistChatWidget> {
     if (_isSending) return;
     final text = _inputController.text.trim();
     if (text.isEmpty) return;
+    if (_pendingText != text) {
+      _pendingMessageId =
+          FirebaseFirestore.instance.collection('conversations').doc().id;
+      _pendingText = text;
+    }
     setState(() => _isSending = true);
-    _inputController.clear();
     try {
       await _service.sendConversationMessage(
-        conversationId: widget.conversationId,
+        conversationId: _resolvedConversationId ?? widget.conversationId,
         text: text,
+        messageId: _pendingMessageId,
+        resolvePatientAlias: false,
       );
+      if (!mounted) return;
+      if (_inputController.text.trim() == text) _inputController.clear();
+      _pendingText = null;
+      _pendingMessageId = null;
       _scrollToBottom();
     } on PsychologistServiceException catch (e) {
       if (!mounted) return;
@@ -141,6 +161,9 @@ class _PsychologistChatWidgetState extends State<PsychologistChatWidget> {
                       ),
                     ),
                   )
+                else if (_otherPartyName == null)
+                  const Expanded(
+                      child: Center(child: CircularProgressIndicator()))
                 else ...[
                   Expanded(child: _buildMessageList(context)),
                   _buildInputBar(context),

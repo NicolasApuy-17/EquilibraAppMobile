@@ -1,4 +1,5 @@
 import '/flutter_flow/flutter_flow_icon_button.dart';
+import '/config/support_contacts.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import 'package:flutter/material.dart';
@@ -62,7 +63,7 @@ const _kOtherChannels = [
     title: 'WhatsApp Infosalud (MINSA)',
     subtitle: 'Escribe por WhatsApp para recibir orientación en salud.',
     actionLabel: 'Escribir por WhatsApp',
-    url: 'https://wa.me/51955557000',
+    url: infosaludWhatsAppUrl,
   ),
   _ContactOption(
     icon: Icons.mail_outline_rounded,

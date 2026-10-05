@@ -24,12 +24,16 @@ Future<void> logAppError({
   // uncaught error printed to the console on every report; skip it outright
   // on web instead.
   if (!kIsWeb) {
-    unawaited(FirebaseCrashlytics.instance.recordError(
-      error,
-      stackTrace,
-      reason: context,
-      fatal: fatal,
-    ));
+    try {
+      await FirebaseCrashlytics.instance.recordError(
+        error,
+        stackTrace,
+        reason: context,
+        fatal: fatal,
+      );
+    } catch (_) {
+      // Keep the Firestore fallback available if the native reporter fails.
+    }
   }
 
   try {

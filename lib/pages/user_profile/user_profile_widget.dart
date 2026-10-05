@@ -13,6 +13,8 @@ import 'dart:ui';
 import '/flutter_flow/custom_functions.dart' as functions;
 import '/index.dart';
 import '/utils/error_messages.dart';
+import '/components/privacy_links.dart';
+import '/components/delete_my_account_button.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -74,21 +76,31 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Recibir un recordatorio diario para registrar cómo te sientes.',
+                      'Recibir un recordatorio en Notificaciones cada día a las 9:00 a. m. (hora de Perú) para registrar cómo te sientes.',
                     ),
                   ),
                   Switch(
                     value: enabled,
                     onChanged: (value) async {
                       setDialogState(() => enabled = value);
-                      await docRef.set(
-                        createUserPrefsRecordData(
-                          name: currentUserDisplayName,
-                          email: currentUserEmail,
-                          dailyReminderEnabled: value,
-                        ),
-                        SetOptions(merge: true),
-                      );
+                      try {
+                        await docRef.set(
+                          createUserPrefsRecordData(
+                            name: currentUserDisplayName,
+                            email: currentUserEmail,
+                            dailyReminderEnabled: value,
+                          ),
+                          SetOptions(merge: true),
+                        );
+                      } catch (_) {
+                        if (!dialogContext.mounted) return;
+                        setDialogState(() => enabled = !value);
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(
+                              content: Text(genericSaveErrorMessage(
+                                  'guardar el recordatorio'))),
+                        );
+                      }
                     },
                   ),
                 ],
@@ -117,14 +129,14 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
           builder: (dialogContext, setDialogState) {
             return AlertDialog(
               title: Text('Privacidad y Datos'),
-              content: Column(
+              content: SingleChildScrollView(child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Tu información está protegida por reglas de acceso: solo '
                     'tú y, si estás vinculado, tu psicólogo asignado pueden '
-                    'ver tus datos. Nadie más tiene acceso.',
+                    'ver tus registros. Los administradores autorizados también tienen acceso para gestión y soporte.',
                   ),
                   if (hasPsychologist) ...[
                     SizedBox(height: 16.0),
@@ -176,8 +188,10 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                           ),
                     ),
                   ],
+                  SizedBox(height: 16.0),
+                  const PrivacyLinks(),
                 ],
-              ),
+              )),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
@@ -756,6 +770,8 @@ class _UserProfileWidgetState extends State<UserProfileWidget> {
                                   Container(
                                     height: 32.0,
                                   ),
+                                  const DeleteMyAccountButton(),
+                                  const SizedBox(height: 32),
                                 ],
                               ),
                             ),

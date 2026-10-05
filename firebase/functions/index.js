@@ -6,10 +6,11 @@ const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
-exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
-  let firestore = admin.firestore();
-  await firestore.collection("users").doc(user.uid).delete();
-});
+const { deleteAccountData } = require("./account_deletion");
+exports.onUserDeleted = functions.runWith({ timeoutSeconds: 540, failurePolicy: true })
+  .auth.user().onDelete((user) => deleteAccountData(user.uid));
+exports.deleteMyAccount = require("./account_actions").deleteMyAccount;
+exports.adminDeleteAccount = require("./account_actions").adminDeleteAccount;
 
 const {
   createPsychologist,
@@ -52,3 +53,4 @@ exports.onTaskNotification = onTaskNotification;
 exports.onActivityAssignmentNotification = onActivityAssignmentNotification;
 exports.onSessionRequestNotification = onSessionRequestNotification;
 exports.onAppErrorNotification = onAppErrorNotification;
+exports.sendDailyReminders = require("./reminders").sendDailyReminders;

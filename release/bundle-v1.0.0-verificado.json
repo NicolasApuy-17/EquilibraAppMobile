@@ -1,0 +1,9 @@
+{
+  "package": "pe.com.equilibra.app",
+  "versionName": "1.0.0",
+  "versionCode": 1,
+  "targetSdk": 36,
+  "minSdk": 23,
+  "certificate": "CN=Equilibra Upload, OU=Mobile, O=Equilibra, C=PE",
+  "sha256": "20653A020B88EC69BF0B3D7D83ECEC045B3EBA864CB0042F1914ADFC2BCDDD73"
+}

@@ -16,6 +16,8 @@ import '/flutter_flow/flutter_flow_util.dart';
 import 'serialization_util.dart';
 
 import '/index.dart';
+import '/pages/psychologist_patient_detail/psychologist_patient_detail_widget.dart'
+    show PatientDetailRoute;
 
 export 'package:go_router/go_router.dart';
 export 'serialization_util.dart';
@@ -263,8 +265,11 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           name: PsychologistPatientDetailWidget.routeName,
           path: PsychologistPatientDetailWidget.routePath,
           requireAuth: true,
-          builder: (context, params) => PsychologistPatientDetailWidget(
-            patient: params.state.extra as UsersRecord,
+          builder: (context, params) => PatientDetailRoute(
+            patient: params.state.extra is UsersRecord
+                ? params.state.extra as UsersRecord
+                : null,
+            patientId: params.state.uri.queryParameters['patientId'],
             initialTabIndex:
                 int.tryParse(params.state.uri.queryParameters['tab'] ?? '') ??
                     0,

@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'auth/firebase_auth/firebase_user_provider.dart';
 import 'auth/firebase_auth/auth_util.dart';
 
@@ -30,7 +29,7 @@ void main() async {
   // `app_errors` Firestore collection (a short summary, for admins in the
   // app's own "Incidencias" tab) -- see lib/utils/error_logging.dart.
   FlutterError.onError = (details) {
-    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    FlutterError.presentError(details);
     logAppError(
       context: 'Flutter framework error',
       error: details.exception,

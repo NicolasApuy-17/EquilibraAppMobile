@@ -82,7 +82,8 @@ class _SesionesTabState extends State<SesionesTab> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(genericSaveErrorMessage('responder la solicitud'))),
+        SnackBar(
+            content: Text(genericSaveErrorMessage('responder la solicitud'))),
       );
     }
   }
@@ -140,8 +141,8 @@ class _SesionesTabState extends State<SesionesTab> {
         return Stack(
           children: [
             ListView(
-              padding: const EdgeInsetsDirectional.fromSTEB(
-                  24.0, 12.0, 24.0, 96.0),
+              padding:
+                  const EdgeInsetsDirectional.fromSTEB(24.0, 12.0, 24.0, 96.0),
               children: [
                 // Scheduling requests the patient sent from their own
                 // "Programar sesión" screen -- separate from the private
@@ -149,9 +150,8 @@ class _SesionesTabState extends State<SesionesTab> {
                 // sessions that already happened.
                 StreamBuilder<List<SessionRequestsRecord>>(
                   stream: querySessionRequestsRecord(
-                    queryBuilder: (q) => q
-                        .where('patientRef', isEqualTo: patientRef)
-                        .where('psychologistRef', isEqualTo: myRef),
+                    queryBuilder: (q) =>
+                        q.where('patientRef', isEqualTo: patientRef),
                   ).handleError((error, stackTrace) {
                     logAppError(
                       context: 'SesionesTab.requests',
@@ -162,12 +162,13 @@ class _SesionesTabState extends State<SesionesTab> {
                   }),
                   builder: (context, requestsSnap) => asyncSection(
                     requestsSnap,
-                    errorText: 'No se pudieron cargar las solicitudes de sesión.',
+                    errorText:
+                        'No se pudieron cargar las solicitudes de sesión.',
                     (requests) {
                       if (requests.isEmpty) return const SizedBox.shrink();
-                      final sorted = [...requests]
-                        ..sort((a, b) => (b.createdTime ?? DateTime(2000))
-                            .compareTo(a.createdTime ?? DateTime(2000)));
+                      final sorted = [...requests]..sort((a, b) =>
+                          (b.createdTime ?? DateTime(2000))
+                              .compareTo(a.createdTime ?? DateTime(2000)));
                       return Padding(
                         padding: const EdgeInsetsDirectional.fromSTEB(
                             0.0, 0.0, 0.0, 20.0),
@@ -268,7 +269,8 @@ class _SessionRequestCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsetsDirectional.fromSTEB(8.0, 3.0, 8.0, 3.0),
+                  padding:
+                      const EdgeInsetsDirectional.fromSTEB(8.0, 3.0, 8.0, 3.0),
                   decoration: BoxDecoration(
                     color: sessionRequestStatusColor(context, request.status)
                         .withValues(alpha: 0.15),
@@ -288,7 +290,8 @@ class _SessionRequestCard extends StatelessWidget {
             ),
             if (request.note.isNotEmpty)
               Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(0.0, 6.0, 0.0, 0.0),
+                padding:
+                    const EdgeInsetsDirectional.fromSTEB(0.0, 6.0, 0.0, 0.0),
                 child: Text(
                   request.note,
                   style: theme.bodyMedium.override(
@@ -300,7 +303,8 @@ class _SessionRequestCard extends StatelessWidget {
               ),
             if (onConfirm != null || onDecline != null)
               Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
+                padding:
+                    const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
                 child: Align(
                   alignment: AlignmentDirectional.centerEnd,
                   child: Wrap(
@@ -361,7 +365,8 @@ class _SessionCard extends StatelessWidget {
               ),
               if (session.topic.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
+                  padding:
+                      const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
                   child: Text(
                     session.topic,
                     style: theme.bodyMedium.override(
@@ -373,7 +378,8 @@ class _SessionCard extends StatelessWidget {
                 ),
               if (session.nextSessionDate != null)
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
+                  padding:
+                      const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
                   child: Text(
                     'Próxima sesión: ${formatDateEs(session.nextSessionDate!)}',
                     style: theme.bodySmall.override(
@@ -459,8 +465,7 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
     final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate:
-          isNextSession ? (_nextSessionDate ?? now) : _sessionDate,
+      initialDate: isNextSession ? (_nextSessionDate ?? now) : _sessionDate,
       // The session date documents something that already happened, so it
       // can't be picked as a future date; the next session is the
       // opposite -- a future appointment, so it can't be picked in the
@@ -531,7 +536,8 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        setState(() => _errorText = genericSaveErrorMessage('guardar la sesión'));
+        setState(
+            () => _errorText = genericSaveErrorMessage('guardar la sesión'));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -541,7 +547,8 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.9,
@@ -587,7 +594,8 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12.0, vertical: 12.0),
-                    margin: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 12.0),
+                    margin: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 0.0, 0.0, 12.0),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12.0),
                       border: Border.all(
@@ -626,7 +634,9 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
                     controller: _clinicalNotesController,
                     maxLines: 3),
                 LabeledField(
-                    label: 'Acuerdos', controller: _agreementsController, maxLines: 2),
+                    label: 'Acuerdos',
+                    controller: _agreementsController,
+                    maxLines: 2),
                 LabeledField(
                     label: 'Tarea para casa (referencia interna)',
                     controller: _homeworkController,
@@ -642,7 +652,8 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12.0, vertical: 12.0),
-                    margin: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 16.0),
+                    margin: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 0.0, 0.0, 16.0),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12.0),
                       border: Border.all(
@@ -665,7 +676,8 @@ class _SessionFormSheetState extends State<_SessionFormSheet> {
                 ),
                 if (_errorText != null)
                   Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 12.0),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        0.0, 0.0, 0.0, 12.0),
                     child: Text(
                       _errorText!,
                       style: FlutterFlowTheme.of(context).bodySmall.override(

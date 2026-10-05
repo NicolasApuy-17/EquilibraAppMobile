@@ -1,4 +1,3 @@
-import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/utils/date_format_es.dart';
@@ -33,40 +32,26 @@ class _RegistrosTabState extends State<RegistrosTab> {
     _behavioralFuture = _loadBehavioral();
   }
 
-  // One-time fetches, not live `.snapshots()` listeners: `records` and
-  // `behavioral_records` reads are gated by `isAssignedPsychologist()`, a
-  // security rule that does a `get()` on the patient's `users/{uid}` doc --
-  // and that same doc gets written to (its `lastActivityAt`) by the
-  // `onRecordActivity`/`onBehavioralRecordActivity` Cloud Function triggers
-  // every time a record is created. A live listener whose rule depends on
-  // a document that gets rewritten moments later reliably shows the
-  // correct data for an instant, then silently drops to empty with no
-  // error -- reproduced directly with a patient's brand-new emotional
-  // record. Refreshed manually instead: on pull-to-refresh, and after
-  // editing a comment.
-  //
-  // Each query filters on BOTH `userRef` and `psychologistRef` -- not just
-  // `userRef` -- because of a separate, real Firestore restriction: for a
-  // `list` query, the security rule can only read `resource.data` fields
-  // that are *also* constrained by that query's own `where` clauses. The
-  // read rule here checks `psychologistRef`; if the query doesn't also
-  // filter on it, Firestore treats that field as undefined while proving
-  // the query safe and denies the whole thing outright (confirmed with the
-  // Firestore Rules emulator: dropping this second filter reproduces
-  // "Property psychologistRef is undefined on object" on every read).
-  // Multiple equality filters like this don't need a composite index.
-  Future<List<RecordsRecord>> _loadRecords() => queryRecordsRecordOnce(
-        queryBuilder: (q) => q
-            .where('userRef', isEqualTo: widget.patient.reference)
-            .where('psychologistRef', isEqualTo: currentUserReference),
-      );
+  // Preserve manual refresh. Scope each query to one patient so the rules
+  // can validate their current assignment and live privacy preference.
+  Future<bool> _isSharing() async {
+    final profile = await widget.patient.reference.get();
+    return (profile.data() as Map<String, dynamic>?)?['shareDataWithPsychologist'] != false;
+  }
 
-  Future<List<BehavioralRecordsRecord>> _loadBehavioral() =>
-      queryBehavioralRecordsRecordOnce(
-        queryBuilder: (q) => q
-            .where('userRef', isEqualTo: widget.patient.reference)
-            .where('psychologistRef', isEqualTo: currentUserReference),
-      );
+  Future<List<RecordsRecord>> _loadRecords() async {
+    if (!await _isSharing()) return [];
+    return queryRecordsRecordOnce(
+      queryBuilder: (q) => q.where('userRef', isEqualTo: widget.patient.reference),
+    );
+  }
+
+  Future<List<BehavioralRecordsRecord>> _loadBehavioral() async {
+    if (!await _isSharing()) return [];
+    return queryBehavioralRecordsRecordOnce(
+      queryBuilder: (q) => q.where('userRef', isEqualTo: widget.patient.reference),
+    );
+  }
 
   Future<void> _refresh() async {
     final records = _loadRecords();
@@ -92,7 +77,8 @@ class _RegistrosTabState extends State<RegistrosTab> {
   bool _inRange(DateTime? date) {
     if (_range == null || date == null) return true;
     final day = DateTime(date.year, date.month, date.day);
-    final start = DateTime(_range!.start.year, _range!.start.month, _range!.start.day);
+    final start =
+        DateTime(_range!.start.year, _range!.start.month, _range!.start.day);
     final end = DateTime(_range!.end.year, _range!.end.month, _range!.end.day);
     return !day.isBefore(start) && !day.isAfter(end);
   }
@@ -107,7 +93,7 @@ class _RegistrosTabState extends State<RegistrosTab> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Observación privada'),
+          title: const Text('Observación para el paciente'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,6 +106,7 @@ class _RegistrosTabState extends State<RegistrosTab> {
                 maxLength: 1000,
                 decoration: const InputDecoration(
                   hintText: 'Escribe una observación breve...',
+                  helperText: 'El paciente recibirá esta observación.',
                 ),
                 onChanged: (_) {
                   if (errorText != null) setDialogState(() => errorText = null);
@@ -158,7 +145,8 @@ class _RegistrosTabState extends State<RegistrosTab> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(genericSaveErrorMessage('guardar la observación'))),
+        SnackBar(
+            content: Text(genericSaveErrorMessage('guardar la observación'))),
       );
     }
   }
@@ -168,114 +156,123 @@ class _RegistrosTabState extends State<RegistrosTab> {
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ListView(
-      padding: const EdgeInsetsDirectional.fromSTEB(24.0, 12.0, 24.0, 24.0),
-      children: [
-        InkWell(
-          onTap: _pickRange,
-          borderRadius: BorderRadius.circular(12.0),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-            decoration: BoxDecoration(
-              color: FlutterFlowTheme.of(context).secondaryBackground,
-              borderRadius: BorderRadius.circular(12.0),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.filter_alt_rounded,
-                    size: 18.0, color: FlutterFlowTheme.of(context).secondaryText),
-                const SizedBox(width: 8.0),
-                Expanded(
-                  child: Text(
-                    _range == null
-                        ? 'Filtrar por fecha'
-                        : '${formatDateEs(_range!.start)} – ${formatDateEs(_range!.end)}',
+        padding: const EdgeInsetsDirectional.fromSTEB(24.0, 12.0, 24.0, 24.0),
+        children: [
+          InkWell(
+            onTap: _pickRange,
+            borderRadius: BorderRadius.circular(12.0),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+              decoration: BoxDecoration(
+                color: FlutterFlowTheme.of(context).secondaryBackground,
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.filter_alt_rounded,
+                      size: 18.0,
+                      color: FlutterFlowTheme.of(context).secondaryText),
+                  const SizedBox(width: 8.0),
+                  Expanded(
+                    child: Text(
+                      _range == null
+                          ? 'Filtrar por fecha'
+                          : '${formatDateEs(_range!.start)} – ${formatDateEs(_range!.end)}',
+                    ),
                   ),
-                ),
-                if (_range != null)
-                  InkWell(
-                    onTap: () => setState(() => _range = null),
-                    child: const Icon(Icons.close_rounded, size: 18.0),
-                  ),
-              ],
+                  if (_range != null)
+                    InkWell(
+                      onTap: () => setState(() => _range = null),
+                      child: const Icon(Icons.close_rounded, size: 18.0),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 16.0),
-        SectionTitle('Registros emocionales'),
-        FutureBuilder<List<RecordsRecord>>(
-          future: _recordsFuture,
-          builder: (context, snapshot) => asyncSection(
-            snapshot,
-            errorText: 'No se pudieron cargar los registros emocionales.',
-            (data) {
-              final records = data.where((r) => _inRange(r.timestamp)).toList()
-                ..sort((a, b) => (b.timestamp ?? DateTime(2000))
-                    .compareTo(a.timestamp ?? DateTime(2000)));
-              if (records.isEmpty) {
-                return const EmptyHint('Sin registros emocionales en este rango.',
-                    icon: Icons.mood_outlined);
-              }
-              return Column(
-                children: records
-                    .map((record) => _EmotionalRecordCard(
-                          record: record,
-                          onEditComment: () => _editComment(
-                            currentComment: record.psychologistComment,
-                            onSave: (comment) => record.reference.update(
-                              createRecordsRecordData(
-                                psychologistComment: comment,
-                                psychologistCommentTime: DateTime.now(),
+          const SizedBox(height: 16.0),
+          SectionTitle('Registros emocionales'),
+          FutureBuilder<List<RecordsRecord>>(
+            future: _recordsFuture,
+            builder: (context, snapshot) => asyncSection(
+              snapshot,
+              errorText: 'No se pudieron cargar los registros emocionales.',
+              (data) {
+                final records = data
+                    .where((r) => _inRange(r.timestamp))
+                    .toList()
+                  ..sort((a, b) => (b.timestamp ?? DateTime(2000))
+                      .compareTo(a.timestamp ?? DateTime(2000)));
+                if (records.isEmpty) {
+                  return const EmptyHint(
+                      'Sin registros emocionales en este rango.',
+                      icon: Icons.mood_outlined);
+                }
+                return Column(
+                  children: records
+                      .map((record) => _EmotionalRecordCard(
+                            record: record,
+                            onEditComment: () => _editComment(
+                              currentComment: record.psychologistComment,
+                              onSave: (comment) => record.reference.update(
+                                createRecordsRecordData(
+                                  psychologistComment: comment,
+                                  psychologistCommentTime: DateTime.now(),
+                                ),
                               ),
                             ),
-                          ),
-                        ))
-                    .toList(),
-              );
-            },
+                          ))
+                      .toList(),
+                );
+              },
+            ),
           ),
-        ),
-        const SizedBox(height: 24.0),
-        SectionTitle('Registros de conducta'),
-        FutureBuilder<List<BehavioralRecordsRecord>>(
-          future: _behavioralFuture,
-          builder: (context, snapshot) => asyncSection(
-            snapshot,
-            errorText: 'No se pudieron cargar los registros de conducta.',
-            (data) {
-              final records = data.where((r) => _inRange(r.createdAt)).toList()
-                ..sort((a, b) => (b.createdAt ?? DateTime(2000))
-                    .compareTo(a.createdAt ?? DateTime(2000)));
-              if (records.isEmpty) {
-                return const EmptyHint('Sin registros de conducta en este rango.',
-                    icon: Icons.checklist_outlined);
-              }
-              return Column(
-                children: records
-                    .map((record) => _BehavioralRecordCard(
-                          record: record,
-                          onEditComment: () => _editComment(
-                            currentComment: record.psychologistComment,
-                            onSave: (comment) => record.reference.update(
-                              createBehavioralRecordsRecordData(
-                                psychologistComment: comment,
-                                psychologistCommentTime: DateTime.now(),
+          const SizedBox(height: 24.0),
+          SectionTitle('Registros de conducta'),
+          FutureBuilder<List<BehavioralRecordsRecord>>(
+            future: _behavioralFuture,
+            builder: (context, snapshot) => asyncSection(
+              snapshot,
+              errorText: 'No se pudieron cargar los registros de conducta.',
+              (data) {
+                final records = data
+                    .where((r) => _inRange(r.createdAt))
+                    .toList()
+                  ..sort((a, b) => (b.createdAt ?? DateTime(2000))
+                      .compareTo(a.createdAt ?? DateTime(2000)));
+                if (records.isEmpty) {
+                  return const EmptyHint(
+                      'Sin registros de conducta en este rango.',
+                      icon: Icons.checklist_outlined);
+                }
+                return Column(
+                  children: records
+                      .map((record) => _BehavioralRecordCard(
+                            record: record,
+                            onEditComment: () => _editComment(
+                              currentComment: record.psychologistComment,
+                              onSave: (comment) => record.reference.update(
+                                createBehavioralRecordsRecordData(
+                                  psychologistComment: comment,
+                                  psychologistCommentTime: DateTime.now(),
+                                ),
                               ),
                             ),
-                          ),
-                        ))
-                    .toList(),
-              );
-            },
+                          ))
+                      .toList(),
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
       ),
     );
   }
 }
 
 class _EmotionalRecordCard extends StatelessWidget {
-  const _EmotionalRecordCard({required this.record, required this.onEditComment});
+  const _EmotionalRecordCard(
+      {required this.record, required this.onEditComment});
 
   final RecordsRecord record;
   final VoidCallback onEditComment;
@@ -319,7 +316,8 @@ class _EmotionalRecordCard extends StatelessWidget {
             ),
             if (record.description.isNotEmpty)
               Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
+                padding:
+                    const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
                 child: Text(
                   record.description,
                   style: FlutterFlowTheme.of(context).bodySmall.override(
@@ -331,7 +329,8 @@ class _EmotionalRecordCard extends StatelessWidget {
               ),
             if (record.hasPsychologistComment())
               Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
+                padding:
+                    const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
                 child: Text(
                   'Tu comentario: ${record.psychologistComment}',
                   style: FlutterFlowTheme.of(context).bodySmall.override(
@@ -359,7 +358,8 @@ class _EmotionalRecordCard extends StatelessWidget {
 }
 
 class _BehavioralRecordCard extends StatelessWidget {
-  const _BehavioralRecordCard({required this.record, required this.onEditComment});
+  const _BehavioralRecordCard(
+      {required this.record, required this.onEditComment});
 
   final BehavioralRecordsRecord record;
   final VoidCallback onEditComment;
@@ -403,7 +403,8 @@ class _BehavioralRecordCard extends StatelessWidget {
             ),
             if (record.notes.isNotEmpty)
               Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
+                padding:
+                    const EdgeInsetsDirectional.fromSTEB(0.0, 4.0, 0.0, 0.0),
                 child: Text(
                   record.notes,
                   style: FlutterFlowTheme.of(context).bodySmall.override(
@@ -415,7 +416,8 @@ class _BehavioralRecordCard extends StatelessWidget {
               ),
             if (record.hasPsychologistComment())
               Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
+                padding:
+                    const EdgeInsetsDirectional.fromSTEB(0.0, 8.0, 0.0, 0.0),
                 child: Text(
                   'Tu comentario: ${record.psychologistComment}',
                   style: FlutterFlowTheme.of(context).bodySmall.override(

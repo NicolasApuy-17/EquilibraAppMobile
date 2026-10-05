@@ -1,4 +1,5 @@
 import '/components/bottom_nav2/bottom_nav2_widget.dart';
+import '/config/support_contacts.dart';
 import '/components/scroll_hiding_bottom_nav.dart';
 import 'recommended_activities_section.dart';
 import '/pages/regulation_exercises/exercise_controls.dart';
@@ -653,7 +654,7 @@ class _RegulationToolsWidgetState extends State<RegulationToolsWidget> {
                                         ),
                                         onPressed: () async {
                                           await launchURL(
-                                              'https://wa.me/message/Q4SUBWYO4CLDF1');
+                                              fabrizzioWhatsAppUrl);
                                         },
                                       ),
                                     ].divide(SizedBox(width: 16.0)),

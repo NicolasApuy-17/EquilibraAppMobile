@@ -34,12 +34,14 @@ class _NotificationsWidgetState extends State<NotificationsWidget> {
   Future<void> _markAllRead(List<NotificationsRecord> notifications) async {
     final unread = notifications.where((n) => !n.read).toList();
     if (unread.isEmpty) return;
-    final batch = FirebaseFirestore.instance.batch();
-    for (final n in unread) {
-      batch.update(n.reference, {'read': true});
-    }
     try {
-      await batch.commit();
+      for (var offset = 0; offset < unread.length; offset += 400) {
+        final batch = FirebaseFirestore.instance.batch();
+        for (final n in unread.skip(offset).take(400)) {
+          batch.update(n.reference, {'read': true});
+        }
+        await batch.commit();
+      }
     } catch (_) {
       // Best-effort -- if it fails, the bell badge just stays as-is; no
       // need to surface an error for a purely cosmetic action.
@@ -71,6 +73,9 @@ class _NotificationsWidgetState extends State<NotificationsWidget> {
     }
 
     switch (notification.type) {
+      case 'daily_reminder':
+        context.pushNamed(EmotionalRecordWidget.routeName);
+        return;
       case 'chat_message':
         if (notification.conversationId.isEmpty) return;
         context.pushNamed(
@@ -145,7 +150,10 @@ class _NotificationsWidgetState extends State<NotificationsWidget> {
       context.pushNamed(
         PsychologistPatientDetailWidget.routeName,
         extra: patient,
-        queryParameters: {'tab': '$tabIndex'},
+        queryParameters: {
+          'tab': '$tabIndex',
+          'patientId': patient.reference.id
+        },
       );
     } catch (_) {
       // Patient may no longer exist/be assigned to this psychologist --

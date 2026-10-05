@@ -1,0 +1,23 @@
+#1 de Firmante:
+
+Certificate #1:
+Propietario: CN=Equilibra Upload, OU=Mobile, O=Equilibra, C=PE
+Emisor: CN=Equilibra Upload, OU=Mobile, O=Equilibra, C=PE
+N�mero de serie: 2de6eb7d2f8a2875
+V�lido desde: Thu Oct 01 01:03:38 PET 2026 hasta: Mon Feb 16 01:03:38 PET 2054
+Huellas digitales del certificado:
+	 SHA1: BB:61:DF:F5:9C:07:A1:B3:9B:27:7B:D3:8B:18:AF:39:27:36:38:F7
+	 SHA256: F3:AF:D0:5E:01:E2:0E:A9:7F:B1:D1:61:F9:59:C8:37:BA:58:10:4E:77:5E:21:67:F3:09:DE:F6:B6:A6:05:C4
+Nombre del algoritmo de firma: SHA384withRSA
+Algoritmo de clave p�blica de asunto: Clave RSA de 3072 bits
+Versi�n: 3
+
+Extensiones:
+
+#1: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: EB 38 2E D7 2E CF 3B 76   01 78 77 2D 42 62 67 06  .8....;v.xw-Bbg.
+0010: C5 C0 40 BB                                        ..@.
+]
+]

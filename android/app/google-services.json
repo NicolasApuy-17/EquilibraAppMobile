@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:229293546081:android:c49ddbb79d8c196662a820",
+        "mobilesdk_app_id": "1:229293546081:android:cbcaa00183f9b88d62a820",
         "android_client_info": {
-          "package_name": "com.mycompany.equilibra"
+          "package_name": "pe.com.equilibra.app"
         }
       },
       "oauth_client": [],

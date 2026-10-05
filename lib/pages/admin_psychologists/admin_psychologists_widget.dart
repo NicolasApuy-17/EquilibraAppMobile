@@ -8,6 +8,8 @@ import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/index.dart';
 import '/services/psychologist_service.dart';
+import '/services/account_deletion_service.dart';
+import '/components/account_deletion_dialog.dart';
 import '/utils/validators.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
@@ -955,6 +957,30 @@ class _UsersTabState extends State<_UsersTab> {
                 ],
               ),
             ),
+            if (!isSelf)
+                TextButton.icon(
+                  onPressed: () async {
+                    final deleted = await showAccountDeletionDialog(
+                      context: context,
+                      targetEmail: user.email,
+                      adminMode: true,
+                      onConfirm: (password, confirmationEmail) =>
+                          AccountDeletionService().deleteAccount(
+                            password: password,
+                            confirmationEmail: confirmationEmail,
+                            targetUid: user.reference.id,
+                          ),
+                    );
+                    if (deleted && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Cuenta eliminada. Sus datos personales se están eliminando.'),
+                      ));
+                    }
+                  },
+                  style: TextButton.styleFrom(foregroundColor: Colors.red.shade700),
+                  icon: const Icon(Icons.delete_forever),
+                  label: const Text('Eliminar cuenta'),
+                ),
           ],
         ),
       ),

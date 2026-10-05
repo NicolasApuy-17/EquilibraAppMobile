@@ -13,6 +13,61 @@ import 'sesiones_tab.dart';
 import 'tareas_tab.dart';
 import 'actividades_tab.dart';
 
+/// Loads a patient for direct links while preserving existing in-memory callers.
+class PatientDetailRoute extends StatefulWidget {
+  const PatientDetailRoute(
+      {super.key, this.patient, this.patientId, this.initialTabIndex = 0});
+  final UsersRecord? patient;
+  final String? patientId;
+  final int initialTabIndex;
+
+  @override
+  State<PatientDetailRoute> createState() => _PatientDetailRouteState();
+}
+
+class _PatientDetailRouteState extends State<PatientDetailRoute> {
+  late Future<UsersRecord?> _patient = _load();
+
+  @override
+  void didUpdateWidget(covariant PatientDetailRoute oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.patientId != widget.patientId ||
+        !identical(oldWidget.patient, widget.patient)) {
+      _patient = _load();
+    }
+  }
+
+  Future<UsersRecord?> _load() async {
+    if (widget.patient != null) return widget.patient;
+    final id = widget.patientId;
+    if (id == null || id.isEmpty || id.contains('/')) return null;
+    final snapshot = await UsersRecord.collection.doc(id).get();
+    return snapshot.exists ? UsersRecord.fromSnapshot(snapshot) : null;
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<UsersRecord?>(
+        future: _patient,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Scaffold(
+                body: Center(child: CircularProgressIndicator()));
+          }
+          if (snapshot.hasError || snapshot.data == null) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Consultante')),
+              body: const Center(
+                  child: Text('No se pudo abrir este consultante.')),
+            );
+          }
+          return PsychologistPatientDetailWidget(
+            patient: snapshot.data!,
+            initialTabIndex: widget.initialTabIndex,
+          );
+        },
+      );
+}
+
 /// Full follow-up view for one patient, reached from `PsychologistHomeWidget`.
 /// Six tabs: Resumen | Avances | Registros | Sesiones | Tareas |
 /// Actividades. Every write here is gated by firestore.rules to the
@@ -101,9 +156,7 @@ class PsychologistPatientDetailWidget extends StatelessWidget {
                           color: FlutterFlowTheme.of(context).primary,
                           size: 24.0,
                         ),
-                        // `conversationId` is always the patient's own uid --
-                        // both sides open the exact same conversation (see
-                        // PsychologistChatWidget's own doc comment).
+                        // Resolve the patient UID to the current conversation.
                         onPressed: () => context.pushNamed(
                           PsychologistChatWidget.routeName,
                           extra: patient.reference.id,

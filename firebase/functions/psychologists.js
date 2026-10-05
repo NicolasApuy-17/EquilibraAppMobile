@@ -1,6 +1,8 @@
 const admin = require("firebase-admin");
+const { FieldValue, FieldPath, Timestamp } = require("firebase-admin/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { onDocumentWritten } = require("./event_context");
+const { syncPatientAccess } = require("./access_sync");
 const { notifyUser, notifyAdmins, displayNameFor } = require("./notifications");
 
 // Same pattern the client uses in lib/utils/validators.dart — kept in sync
@@ -55,7 +57,7 @@ async function logServerError(context, error, userUid) {
       stackTrace: error?.stack ? `${error.stack}`.split("\n").slice(0, 20).join("\n") : null,
       userRef: userUid ? admin.firestore().collection("users").doc(userUid) : null,
       role: "system",
-      createdTime: admin.firestore.FieldValue.serverTimestamp(),
+      createdTime: FieldValue.serverTimestamp(),
     });
   } catch (loggingError) {
     console.error("[logServerError] failed to log:", loggingError);
@@ -137,19 +139,23 @@ exports.createPsychologist = onCall({ cors: true }, async (request) => {
     );
   }
 
-  const linkCode = await generateUniqueLinkCode(displayName);
-
-  await admin.firestore().collection("users").doc(uid).set({
-    email,
-    display_name: displayName,
-    uid,
-    role: "psicologo",
-    specialty,
-    linkCode,
-    created_time: admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  return { uid, linkCode };
+  try {
+    const linkCode = await generateUniqueLinkCode(displayName);
+    await admin.firestore().collection("users").doc(uid).set({
+      email, display_name: displayName, uid, role: "psicologo", specialty,
+      linkCode, created_time: FieldValue.serverTimestamp(),
+    });
+    return { uid, linkCode };
+  } catch (error) {
+    // Compensate only the Auth account created by this invocation.
+    try {
+      await admin.auth().deleteUser(uid);
+    } catch (cleanupError) {
+      await logServerError("createPsychologist: cleanup failed", cleanupError, uid);
+    }
+    await logServerError("createPsychologist: profile failed", error, request.auth.uid);
+    throw new HttpsError("internal", "No se pudo completar el alta. Intenta nuevamente.");
+  }
 });
 
 /**
@@ -158,26 +164,54 @@ exports.createPsychologist = onCall({ cors: true }, async (request) => {
  * conversation. Does not check whether the patient already has a
  * psychologist assigned — callers decide whether that's allowed.
  */
-async function linkPatientToPsychologist(patientRef, psychologistRef) {
+async function linkPatientToPsychologist(patientRef, psychologistRef, requireUnassigned = false) {
   const firestore = admin.firestore();
-  const conversationRef = firestore
-    .collection("conversations")
-    .doc(patientRef.id);
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const newConversationRef = firestore.collection("conversations").doc();
+  let conversationId;
+  const now = FieldValue.serverTimestamp();
 
   await firestore.runTransaction(async (transaction) => {
+    const patient = await transaction.get(patientRef);
+    const psychologist = await transaction.get(psychologistRef);
+    if (!patient.exists || patient.data().role !== "paciente" ||
+        !psychologist.exists || psychologist.data().role !== "psicologo") {
+      throw new HttpsError("failed-precondition", "El vínculo seleccionado no es válido.");
+    }
+    const data = patient.data();
+    const previousRef = data.psychologistRef;
+    const samePsychologist = previousRef?.path === psychologistRef.path;
+    if (requireUnassigned && previousRef && !samePsychologist) {
+      throw new HttpsError("failed-precondition", "Ya tienes un psicólogo asignado.");
+    }
+    // Keep a legacy conversation on an unchanged assignment. A changed
+    // assignment always gets a fresh conversation with immutable participants.
+    const conversationRef = samePsychologist
+      ? firestore.collection("conversations").doc(data.activeConversationId || patientRef.id)
+      : newConversationRef;
+    const conversation = await transaction.get(conversationRef);
+    const legacyNoteRef = firestore.collection("patient_notes").doc(patientRef.id);
+    const legacyNote = await transaction.get(legacyNoteRef);
+    if (previousRef && !samePsychologist && legacyNote.exists &&
+        !legacyNote.data().psychologistRef) {
+      transaction.update(legacyNoteRef, { psychologistRef: previousRef });
+    }
+    // Also seal notes when linking a formerly unassigned patient. Unattributed
+    // legacy data must not become visible to the incoming professional.
+    if (!previousRef && legacyNote.exists && !legacyNote.data().psychologistRef) {
+      transaction.update(legacyNoteRef, { psychologistRef: null, sealed: true });
+    }
     transaction.update(patientRef, {
       psychologistRef,
       psychologistLinkedAt: now,
+      activeConversationId: conversationRef.id,
     });
-    transaction.set(
-      conversationRef,
-      { patientRef, psychologistRef, createdTime: now },
-      { merge: true }
-    );
+    if (!conversation.exists) {
+      transaction.set(conversationRef, { patientRef, psychologistRef, createdTime: now });
+    }
+    conversationId = conversationRef.id;
   });
 
-  return conversationRef.id;
+  return conversationId;
 }
 
 exports.linkPsychologistByCode = onCall({ cors: true }, async (request) => {
@@ -210,7 +244,7 @@ exports.linkPsychologistByCode = onCall({ cors: true }, async (request) => {
   }
 
   const psychologistRef = matches.docs[0].ref;
-  const conversationId = await linkPatientToPsychologist(patientRef, psychologistRef);
+  const conversationId = await linkPatientToPsychologist(patientRef, psychologistRef, true);
 
   // Self-service link, made without any admin action -- unlike
   // `adminAssignPsychologist`, where the admin already knows.
@@ -321,7 +355,7 @@ exports.adminDiagnosePatientLink = onCall({ cors: true }, async (request) => {
   // list -- no error shown, indistinguishable from "no records".
   const describeValue = (v) => {
     if (v === null || v === undefined) return "null";
-    if (v instanceof admin.firestore.Timestamp) {
+    if (v instanceof Timestamp) {
       return `Timestamp(${v.toDate().toISOString()})`;
     }
     if (v instanceof admin.firestore.DocumentReference) return `Ref(${v.path})`;
@@ -359,100 +393,32 @@ exports.adminDiagnosePatientLink = onCall({ cors: true }, async (request) => {
   return result;
 });
 
-/**
- * Admin-only, one-off maintenance: stamps `psychologistRef` onto existing
- * `records`/`behavioral_records`/`tasks` documents that predate that field
- * (see firestore.rules -- their read rule now compares `psychologistRef`
- * directly instead of doing a cross-collection `get()`, which was found to
- * make `list` queries silently return empty even for correctly-linked
- * data). Safe to run repeatedly: only touches documents missing the field,
- * and this is the Admin SDK so it bypasses the `create`-only validation
- * that constrains the client. For each collection:
- *  - `records`/`behavioral_records`: stamps the referenced patient's
- *    *current* `psychologistRef` (skipped if that patient has none).
- *  - `tasks`: a psychologist-assigned task (`createdByRef != userRef`)
- *    stamps `createdByRef` (the assigning psychologist, unambiguous and
- *    doesn't depend on who the patient is linked to *now*); a self-created
- *    task stamps the patient's current `psychologistRef` like the other
- *    two collections.
- * Returns how many documents were updated per collection, plus how many
- * were left alone because the patient has no psychologist.
- */
+/** Reconcile query references against each patient's live assignment and
+ * consent. Safe to repeat; no private record is made visible by this repair. */
 exports.adminBackfillPsychologistRefs = onCall({ cors: true }, async (request) => {
   assertAuthenticated(request);
   await assertIsAdmin(request.auth.uid);
 
   const db = admin.firestore();
-  const userSnapCache = new Map();
-  async function currentPsychologistRefFor(userRef) {
-    if (!userRef) return null;
-    const key = userRef.path;
-    if (!userSnapCache.has(key)) {
-      const snap = await userRef.get();
-      userSnapCache.set(key, snap.exists ? snap.data().psychologistRef ?? null : null);
-    }
-    return userSnapCache.get(key);
-  }
-
   const result = {
     records: { updated: 0, skippedNoPsychologist: 0 },
     behavioral_records: { updated: 0, skippedNoPsychologist: 0 },
     tasks: { updated: 0, skippedNoPsychologist: 0 },
   };
-
-  async function backfillPatientOwned(collectionName) {
-    const snap = await db.collection(collectionName).get();
-    let batch = db.batch();
-    let pending = 0;
-    for (const doc of snap.docs) {
-      const data = doc.data();
-      if (data.psychologistRef) continue;
-      const psychologistRef = await currentPsychologistRefFor(data.userRef);
-      if (!psychologistRef) {
-        result[collectionName].skippedNoPsychologist++;
-        continue;
-      }
-      batch.update(doc.ref, { psychologistRef });
-      result[collectionName].updated++;
-      pending++;
-      if (pending === 400) {
-        await batch.commit();
-        batch = db.batch();
-        pending = 0;
-      }
+  let cursor;
+  for (;;) {
+    let query = db.collection("users").where("role", "==", "paciente")
+      .orderBy(FieldPath.documentId()).limit(100);
+    if (cursor) query = query.startAfter(cursor);
+    const page = await query.get();
+    if (page.empty) break;
+    for (const patient of page.docs) {
+      const counts = await syncPatientAccess(patient.ref);
+      for (const name of Object.keys(result)) result[name].updated += counts[name].updated;
     }
-    if (pending > 0) await batch.commit();
+    cursor = page.docs[page.docs.length - 1];
+    if (page.size < 100) break;
   }
-
-  await backfillPatientOwned("records");
-  await backfillPatientOwned("behavioral_records");
-
-  const tasksSnap = await db.collection("tasks").get();
-  let taskBatch = db.batch();
-  let taskPending = 0;
-  for (const doc of tasksSnap.docs) {
-    const data = doc.data();
-    if (data.psychologistRef) continue;
-    const isAssignedByPsychologist =
-      data.createdByRef && data.userRef && data.createdByRef.path !== data.userRef.path;
-    const psychologistRef = isAssignedByPsychologist
-      ? data.createdByRef
-      : await currentPsychologistRefFor(data.userRef);
-    if (!psychologistRef) {
-      result.tasks.skippedNoPsychologist++;
-      continue;
-    }
-    taskBatch.update(doc.ref, { psychologistRef });
-    result.tasks.updated++;
-    taskPending++;
-    if (taskPending === 400) {
-      await taskBatch.commit();
-      taskBatch = db.batch();
-      taskPending = 0;
-    }
-  }
-  if (taskPending > 0) await taskBatch.commit();
-
   return result;
 });
 
@@ -549,8 +515,8 @@ exports.setUserRole = onCall({ cors: true }, async (request) => {
       role: "psicologo",
       linkCode,
       specialty: data.specialty || "",
-      psychologistRef: admin.firestore.FieldValue.delete(),
-      psychologistLinkedAt: admin.firestore.FieldValue.delete(),
+      psychologistRef: FieldValue.delete(),
+      psychologistLinkedAt: FieldValue.delete(),
     });
     return { role: "psicologo", linkCode };
   }
@@ -558,20 +524,20 @@ exports.setUserRole = onCall({ cors: true }, async (request) => {
   if (newRole === "admin") {
     await userRef.update({
       role: "admin",
-      linkCode: admin.firestore.FieldValue.delete(),
-      specialty: admin.firestore.FieldValue.delete(),
-      psychologistRef: admin.firestore.FieldValue.delete(),
-      psychologistLinkedAt: admin.firestore.FieldValue.delete(),
+      linkCode: FieldValue.delete(),
+      specialty: FieldValue.delete(),
+      psychologistRef: FieldValue.delete(),
+      psychologistLinkedAt: FieldValue.delete(),
     });
     return { role: "admin" };
   }
 
   await userRef.update({
     role: "paciente",
-    linkCode: admin.firestore.FieldValue.delete(),
-    specialty: admin.firestore.FieldValue.delete(),
-    psychologistRef: admin.firestore.FieldValue.delete(),
-    psychologistLinkedAt: admin.firestore.FieldValue.delete(),
+    linkCode: FieldValue.delete(),
+    specialty: FieldValue.delete(),
+    psychologistRef: FieldValue.delete(),
+    psychologistLinkedAt: FieldValue.delete(),
   });
   return { role: "paciente" };
 });
@@ -579,9 +545,13 @@ exports.setUserRole = onCall({ cors: true }, async (request) => {
 exports.sendConversationMessage = onCall({ cors: true }, async (request) => {
   assertAuthenticated(request);
 
-  const conversationId = `${request.data?.conversationId ?? ""}`.trim();
+  let conversationId = `${request.data?.conversationId ?? ""}`.trim();
   const text = `${request.data?.text ?? ""}`.trim();
-  if (!conversationId) {
+  const messageId = request.data?.messageId;
+  if (messageId != null && (typeof messageId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(messageId))) {
+    throw new HttpsError("invalid-argument", "Identificador de mensaje inválido.");
+  }
+  if (!conversationId || conversationId.includes('/')) {
     throw new HttpsError("invalid-argument", "Conversación inválida.");
   }
   if (!text) {
@@ -595,34 +565,43 @@ exports.sendConversationMessage = onCall({ cors: true }, async (request) => {
   }
 
   const firestore = admin.firestore();
+  // Existing task/activity callers pass the patient UID. Resolve that alias
+  // to the active conversation without changing the legacy chat participants.
+  if (request.data?.resolvePatientAlias === true) {
+    const patientSnap = await firestore.collection("users").doc(conversationId).get();
+    if (patientSnap.exists && patientSnap.data().role === "paciente") {
+      conversationId = patientSnap.data().activeConversationId || conversationId;
+    }
+  }
   const conversationRef = firestore.collection("conversations").doc(conversationId);
   const callerRef = firestore.collection("users").doc(request.auth.uid);
-
-  const conversationSnap = await conversationRef.get();
-  if (!conversationSnap.exists) {
-    throw new HttpsError("not-found", "Esa conversación no existe.");
-  }
-  const conversation = conversationSnap.data();
-  const isParticipant =
-    conversation.patientRef?.path === callerRef.path ||
-    conversation.psychologistRef?.path === callerRef.path;
-  if (!isParticipant) {
-    throw new HttpsError(
-      "permission-denied",
-      "No formas parte de esta conversación."
-    );
-  }
-
-  const now = admin.firestore.FieldValue.serverTimestamp();
-  await conversationRef.collection("messages").add({
-    senderRef: callerRef,
-    text,
-    timestamp: now,
+  const messageRef = messageId
+    ? conversationRef.collection("messages").doc(`${request.auth.uid}_${messageId}`)
+    : conversationRef.collection("messages").doc();
+  const conversation = await firestore.runTransaction(async (tx) => {
+    const conversationSnap = await tx.get(conversationRef);
+    const messageSnap = await tx.get(messageRef);
+    if (!conversationSnap.exists) throw new HttpsError("not-found", "Esa conversación no existe.");
+    const data = conversationSnap.data();
+    if (data.patientRef?.path !== callerRef.path && data.psychologistRef?.path !== callerRef.path) {
+      throw new HttpsError("permission-denied", "No formas parte de esta conversación.");
+    }
+    const patient = await tx.get(data.patientRef);
+    if (!patient.exists || patient.data().psychologistRef?.path !== data.psychologistRef?.path ||
+        (patient.data().activeConversationId && patient.data().activeConversationId !== conversationId)) {
+      throw new HttpsError("failed-precondition", "Esta conversación está archivada.");
+    }
+    if (messageSnap.exists) {
+      if (messageSnap.data().text !== text) {
+        throw new HttpsError("already-exists", "Ese identificador ya corresponde a otro mensaje.");
+      }
+      return data;
+    }
+    const now = FieldValue.serverTimestamp();
+    tx.create(messageRef, { senderRef: callerRef, text, timestamp: now });
+    tx.update(conversationRef, { lastMessageText: text, lastMessageTime: now });
+    return data;
   });
-  await conversationRef.set(
-    { lastMessageText: text, lastMessageTime: now },
-    { merge: true }
-  );
 
   const recipientRef =
     conversation.patientRef?.path === callerRef.path
@@ -635,6 +614,7 @@ exports.sendConversationMessage = onCall({ cors: true }, async (request) => {
       title: `Mensaje de ${senderName}`,
       body: text,
       conversationId,
+      notificationId: messageRef.path,
     });
   }
 
@@ -652,7 +632,7 @@ async function touchLastActivity(userRef) {
   if (!userRef) return;
   try {
     await userRef.update({
-      lastActivityAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastActivityAt: FieldValue.serverTimestamp(),
     });
   } catch (error) {
     console.error("[touchLastActivity] failed for", userRef.path, error);
@@ -675,71 +655,22 @@ exports.onBehavioralRecordActivity = activityTrigger(
 );
 exports.onTaskActivity = activityTrigger("tasks/{taskId}");
 
-/**
- * Fires on every write to a patient's `users/{uid}` doc. When
- * `shareDataWithPsychologist` (the toggle in "Privacidad y Datos")
- * actually changes value, retroactively rewrites the denormalized
- * `psychologistRef` on that patient's own `records`/`behavioral_records`
- * documents to match: null when sharing is turned off (hiding them from
- * the psychologist's `psychologistRef`-filtered reads, same as if the
- * record had no psychologist), or the patient's current `psychologistRef`
- * when turned back on. `goals` needs no backfill -- its read rule checks
- * the live value directly via `isAssignedPsychologistAndSharing` (see
- * firestore.rules), since it was never denormalized in the first place.
- * `tasks`/`session_requests` are deliberately left alone: the sharing
- * toggle only covers "Mis registros", not tasks or scheduling.
- */
+/** Assignment or consent changes reconcile references against live state.
+ * The rules revoke access immediately; retryable sync only maintains indexes. */
 exports.onShareDataWithPsychologistChanged = onDocumentWritten(
-  "users/{uid}",
+  { document: "users/{uid}", retry: true },
   async (event) => {
     const before = event.data?.before?.exists ? event.data.before.data() : null;
     const after = event.data?.after?.exists ? event.data.after.data() : null;
     if (!after || after.role !== "paciente") return null;
-
-    const beforeSharing = before?.shareDataWithPsychologist ?? true;
-    const afterSharing = after.shareDataWithPsychologist ?? true;
-    if (beforeSharing === afterSharing) return null;
-
-    const db = admin.firestore();
-    const patientRef = db.collection("users").doc(event.params.uid);
-    const newPsychologistRef = afterSharing ? after.psychologistRef ?? null : null;
-
-    async function applyToCollection(collectionName) {
-      const snap = await db
-        .collection(collectionName)
-        .where("userRef", "==", patientRef)
-        .get();
-      if (snap.empty) return;
-      let batch = db.batch();
-      let pending = 0;
-      for (const doc of snap.docs) {
-        batch.update(doc.ref, { psychologistRef: newPsychologistRef });
-        pending++;
-        if (pending === 400) {
-          await batch.commit();
-          batch = db.batch();
-          pending = 0;
-        }
-      }
-      if (pending > 0) await batch.commit();
-    }
-
+    if ((before?.shareDataWithPsychologist ?? true) === (after.shareDataWithPsychologist ?? true) &&
+        before?.psychologistRef?.path === after.psychologistRef?.path) return null;
+    const patientRef = admin.firestore().collection("users").doc(event.params.uid);
     try {
-      await Promise.all([
-        applyToCollection("records"),
-        applyToCollection("behavioral_records"),
-      ]);
+      await syncPatientAccess(patientRef);
     } catch (error) {
-      console.error(
-        "[onShareDataWithPsychologistChanged] failed for",
-        patientRef.path,
-        error
-      );
-      await logServerError(
-        `onShareDataWithPsychologistChanged failed for ${patientRef.path}`,
-        error,
-        event.params.uid
-      );
+      await logServerError("syncPatientAccess", error, event.params.uid);
+      throw error;
     }
     return null;
   }

@@ -6,11 +6,18 @@ service firebase.storage {
     }
     match /users/{userId}/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null && request.auth.uid == userId &&
+        request.resource.size <= 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/(jpeg|png|webp|gif|heic|heif)');
     }
     match /news_images/{psychologistUid}/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth.uid == psychologistUid;
+      allow delete: if request.auth != null && request.auth.uid == psychologistUid;
+      allow create, update: if request.auth != null && request.auth.uid == psychologistUid &&
+        firestore.get(/databases/(default)/documents/users/$(psychologistUid)).data.role == 'psicologo' &&
+        request.resource.size <= 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/(jpeg|png|webp|gif|heic|heif)');
     }
   }
 }

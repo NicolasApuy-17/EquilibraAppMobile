@@ -1,5 +1,6 @@
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
+import '/auth/firebase_auth/auth_util.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/utils/date_format_es.dart';
 import '/utils/error_logging.dart';
@@ -71,8 +72,9 @@ class _ResumenTabState extends State<ResumenTab> {
     note: '',
   );
 
-  DocumentReference get _noteRef =>
-      FirebaseFirestore.instance.collection('patient_notes').doc(widget.patient.reference.id);
+  DocumentReference get _noteRef => currentUserReference!
+      .collection('patient_notes')
+      .doc(widget.patient.reference.id);
 
   /// Never throws -- a failure on any one sub-query (e.g. the private note,
   /// which only the assigned psychologist can read) must not leave the
@@ -81,7 +83,8 @@ class _ResumenTabState extends State<ResumenTab> {
     try {
       return await _loadOrThrow();
     } catch (e, stackTrace) {
-      logAppError(context: 'ResumenTab._load', error: e, stackTrace: stackTrace);
+      logAppError(
+          context: 'ResumenTab._load', error: e, stackTrace: stackTrace);
       return _empty;
     }
   }
@@ -90,47 +93,53 @@ class _ResumenTabState extends State<ResumenTab> {
     final patientRef = widget.patient.reference;
     final myRef = currentUserReference;
     final now = DateTime.now();
-    final startOfWeek =
-        DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final startOfWeek = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: now.weekday - 1));
     final startOfLastWeek = startOfWeek.subtract(const Duration(days: 7));
 
     final sessionsSnap = await SessionsRecord.collection
         .where('patientRef', isEqualTo: patientRef)
         .where('psychologistRef', isEqualTo: myRef)
         .get();
-    final sessions =
-        sessionsSnap.docs.map((d) => SessionsRecord.fromSnapshot(d)).toList()
-          ..sort((a, b) =>
-              (b.sessionDate ?? DateTime(2000)).compareTo(a.sessionDate ?? DateTime(2000)));
+    final sessions = sessionsSnap.docs
+        .map((d) => SessionsRecord.fromSnapshot(d))
+        .toList()
+      ..sort((a, b) => (b.sessionDate ?? DateTime(2000))
+          .compareTo(a.sessionDate ?? DateTime(2000)));
 
-    // Each query below also filters on `psychologistRef` (our own ref), not
-    // just the patient's `userRef` -- a `list` query's security rule can
-    // only read `resource.data` fields that are *also* constrained by that
-    // query's own `where` clauses, and the read rule for these collections
-    // checks `psychologistRef`. Without this second filter, Firestore
-    // treats that field as undefined while proving the query safe and
-    // denies the whole read (confirmed with the Firestore Rules emulator
-    // -- see registros_tab.dart). Multiple equality filters like this
-    // don't need a composite index.
-    final recordsSnap = await RecordsRecord.collection
-        .where('userRef', isEqualTo: patientRef)
-        .where('psychologistRef', isEqualTo: myRef)
-        .get();
-    final records = recordsSnap.docs.map((d) => RecordsRecord.fromSnapshot(d)).toList()
-      ..sort((a, b) => (b.timestamp ?? DateTime(2000)).compareTo(a.timestamp ?? DateTime(2000)));
+    // Sharing applies only to records: private records must not prevent the
+    // rest of the summary (sessions, tasks, activities, own notes) loading.
+    final profile = await patientRef.get();
+    final sharing = (profile.data()
+            as Map<String, dynamic>?)?['shareDataWithPsychologist'] !=
+        false;
+    final recordsSnap = sharing
+        ? await RecordsRecord.collection
+            .where('userRef', isEqualTo: patientRef)
+            .get()
+        : null;
+    final records = (recordsSnap?.docs
+            .map((d) => RecordsRecord.fromSnapshot(d))
+            .toList() ??
+        <RecordsRecord>[])
+      ..sort((a, b) => (b.timestamp ?? DateTime(2000))
+          .compareTo(a.timestamp ?? DateTime(2000)));
 
-    final behavioralSnap = await BehavioralRecordsRecord.collection
-        .where('userRef', isEqualTo: patientRef)
-        .where('psychologistRef', isEqualTo: myRef)
-        .get();
-    final behaviors =
-        behavioralSnap.docs.map((d) => BehavioralRecordsRecord.fromSnapshot(d)).toList();
+    final behavioralSnap = sharing
+        ? await BehavioralRecordsRecord.collection
+            .where('userRef', isEqualTo: patientRef)
+            .get()
+        : null;
+    final behaviors = behavioralSnap?.docs
+            .map((d) => BehavioralRecordsRecord.fromSnapshot(d))
+            .toList() ??
+        <BehavioralRecordsRecord>[];
 
     final tasksSnap = await TasksRecord.collection
         .where('userRef', isEqualTo: patientRef)
-        .where('psychologistRef', isEqualTo: myRef)
         .get();
-    final tasks = tasksSnap.docs.map((d) => TasksRecord.fromSnapshot(d)).toList();
+    final tasks =
+        tasksSnap.docs.map((d) => TasksRecord.fromSnapshot(d)).toList();
 
     final activitiesSnap = await ActivityAssignmentsRecord.collection
         .where('patientRef', isEqualTo: patientRef)
@@ -141,10 +150,25 @@ class _ResumenTabState extends State<ResumenTab> {
         .toList();
 
     final noteSnap = await _noteRef.get();
-    final note = (noteSnap.data() as Map<String, dynamic>?)?['notes'] as String? ?? '';
+    var note =
+        (noteSnap.data() as Map<String, dynamic>?)?['notes'] as String? ?? '';
+    if (!noteSnap.exists) {
+      // Preserve existing notes until the professional saves in their own folder.
+      // Legacy rules deny notes sealed to another author during reassignment.
+      try {
+        final legacy = await FirebaseFirestore.instance
+            .collection('patient_notes')
+            .doc(widget.patient.reference.id)
+            .get();
+        note = legacy.data()?['notes'] as String? ?? '';
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied') rethrow;
+      }
+    }
 
-    final recordsThisWeek =
-        records.where((r) => (r.timestamp ?? DateTime(2000)).isAfter(startOfWeek)).toList();
+    final recordsThisWeek = records
+        .where((r) => (r.timestamp ?? DateTime(2000)).isAfter(startOfWeek))
+        .toList();
     final recordsLastWeek = records
         .where((r) =>
             (r.timestamp ?? DateTime(2000)).isAfter(startOfLastWeek) &&
@@ -165,7 +189,8 @@ class _ResumenTabState extends State<ResumenTab> {
     final timeline = <_TimelineEvent>[
       for (final s in sessions)
         if (s.sessionDate != null)
-          _TimelineEvent(s.sessionDate!, 'Sesión N.º ${s.sessionNumber} realizada'),
+          _TimelineEvent(
+              s.sessionDate!, 'Sesión N.º ${s.sessionNumber} realizada'),
       for (final t in tasksAssignedByMe)
         if (t.assignedDate != null)
           _TimelineEvent(t.assignedDate!, 'Tarea asignada: ${t.title}'),
@@ -180,7 +205,8 @@ class _ResumenTabState extends State<ResumenTab> {
           _TimelineEvent(b.createdAt!, 'Registro de conducta realizado'),
       for (final a in activityAssignments)
         if (a.completedAt != null)
-          _TimelineEvent(a.completedAt!, 'Realizó actividad: ${a.activityName}'),
+          _TimelineEvent(
+              a.completedAt!, 'Realizó actividad: ${a.activityName}'),
     ]..sort((a, b) => b.date.compareTo(a.date));
 
     return _ResumenData(
@@ -188,7 +214,8 @@ class _ResumenTabState extends State<ResumenTab> {
       lastRecord: records.isEmpty ? null : records.first,
       recordsThisWeek: recordsThisWeek.length,
       tasksAssigned: tasksAssignedByMe.length,
-      tasksCompleted: tasksAssignedByMe.where((t) => t.status == 'completada').length,
+      tasksCompleted:
+          tasksAssignedByMe.where((t) => t.status == 'completada').length,
       activitiesCompleted:
           activityAssignments.where((a) => a.status == 'completada').length,
       avgIntensityThisWeek: avgThisWeek,
@@ -238,12 +265,14 @@ class _ResumenTabState extends State<ResumenTab> {
     );
     if (result != true || !mounted) return;
     try {
-      await _noteRef.set({'notes': controller.text.trim()}, SetOptions(merge: true));
+      await _noteRef
+          .set({'notes': controller.text.trim()}, SetOptions(merge: true));
       _refresh();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(genericSaveErrorMessage('guardar la observación'))),
+        SnackBar(
+            content: Text(genericSaveErrorMessage('guardar la observación'))),
       );
     }
   }
@@ -269,7 +298,8 @@ class _ResumenTabState extends State<ResumenTab> {
           final data = snapshot.data!;
           final theme = FlutterFlowTheme.of(context);
           return ListView(
-            padding: const EdgeInsetsDirectional.fromSTEB(24.0, 12.0, 24.0, 24.0),
+            padding:
+                const EdgeInsetsDirectional.fromSTEB(24.0, 12.0, 24.0, 24.0),
             children: [
               Wrap(
                 spacing: 12.0,
@@ -319,11 +349,12 @@ class _ResumenTabState extends State<ResumenTab> {
                   color: theme.secondaryBackground,
                   borderRadius: BorderRadius.circular(14.0),
                 ),
-                child: Text(_evolutionText(data), style: theme.bodyMedium.override(
-                  font: GoogleFonts.outfit(),
-                  color: theme.primaryText,
-                  letterSpacing: 0.0,
-                )),
+                child: Text(_evolutionText(data),
+                    style: theme.bodyMedium.override(
+                      font: GoogleFonts.outfit(),
+                      color: theme.primaryText,
+                      letterSpacing: 0.0,
+                    )),
               ),
               const SizedBox(height: 24.0),
               SectionTitle(
@@ -334,7 +365,8 @@ class _ResumenTabState extends State<ResumenTab> {
                 ),
               ),
               if (data.note.isEmpty)
-                const EmptyHint('Aún no has dejado observaciones sobre este consultante.')
+                const EmptyHint(
+                    'Aún no has dejado observaciones sobre este consultante.')
               else
                 Container(
                   padding: const EdgeInsets.all(14.0),
@@ -350,14 +382,16 @@ class _ResumenTabState extends State<ResumenTab> {
                 const EmptyHint('Todavía no hay actividad registrada.')
               else
                 ...data.timeline.map((event) => Padding(
-                      padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 8.0),
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                          0.0, 0.0, 0.0, 8.0),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             formatDateEs(event.date),
                             style: theme.bodySmall.override(
-                              font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                              font: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.bold),
                               color: theme.secondaryText,
                               letterSpacing: 0.0,
                               fontWeight: FontWeight.bold,

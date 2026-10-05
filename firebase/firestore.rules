@@ -12,19 +12,7 @@ service cloud.firestore {
         get(userRef(request.auth.uid)).data.role == 'admin';
     }
 
-    // True when the caller is the psychologist assigned to `patientUid`
-    // (i.e. that patient's own `psychologistRef` points back at the caller).
-    // Only safe to use for a *single-document* check (a `create`/`update`
-    // validation, or a `get` by id) -- seemingly reliable-looking cross-
-    // collection `get()` calls like this one turn out to make `list`
-    // queries (e.g. a psychologist's own "Registros"/"Avances" tabs
-    // querying `records` by `userRef`) silently come back empty instead of
-    // erroring, even though every reference matches -- reproduced directly
-    // with a patient's real emotional records. For anything read via a
-    // list query, denormalize the assigned psychologist onto the document
-    // itself instead (see `psychologistRef` on `records`/
-    // `behavioral_records`/`tasks` below, and the existing pattern on
-    // `sessions`/`activity_assignments`), and compare that field directly.
+    // Current assignment, used for legacy-note access by patient UID.
     function isAssignedPsychologist(patientUid) {
       return request.auth != null &&
         get(userRef(patientUid)).data.psychologistRef == userRef(request.auth.uid);
@@ -40,7 +28,15 @@ service cloud.firestore {
     // the reference straight to `get()` sidesteps `.id` entirely.
     function isAssignedPsychologistByRef(patientRef) {
       return request.auth != null &&
+        isPsychologist() &&
         get(patientRef).data.psychologistRef == userRef(request.auth.uid);
+    }
+
+    // Queries also constrain userRef/patientRef to one patient. Checking the
+    // live profile revokes access immediately, before background sync finishes.
+    function canReadSharedRecord(patientRef) {
+      return isAssignedPsychologistByRef(patientRef) &&
+        get(patientRef).data.get('shareDataWithPsychologist', true) == true;
     }
 
     // The psychologist currently assigned to the caller (the patient),
@@ -59,20 +55,6 @@ service cloud.firestore {
     // patients keep today's behavior with no migration needed.
     function patientIsSharingData(patientUid) {
       return get(userRef(patientUid)).data.get('shareDataWithPsychologist', true) == true;
-    }
-
-    // Same as `isAssignedPsychologist`, but also requires the patient
-    // hasn't opted out via `patientIsSharingData`. Used only by `goals`
-    // below, whose read rule needs the *live* value: unlike
-    // records/behavioral_records, `goals` isn't denormalized, so this adds
-    // no new list-query risk (it's already `isAssignedPsychologist`'s
-    // existing single-extra-`get()` shape, just with one more `get()` of
-    // the same document). Deliberately NOT folded into
-    // `isAssignedPsychologist` itself, which `patient_notes` below also
-    // uses -- the sharing toggle intentionally doesn't affect the
-    // psychologist's own private working note about the patient.
-    function isAssignedPsychologistAndSharing(patientUid) {
-      return isAssignedPsychologist(patientUid) && patientIsSharingData(patientUid);
     }
 
     // Fields a signed-in user may set on their own `users/{uid}` doc
@@ -118,14 +100,17 @@ service cloud.firestore {
     match /records/{document} {
       allow create: if request.auth != null &&
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
-        sharedRecordPsychologistRefIsValid();
+        sharedRecordPsychologistRefIsValid() &&
+        !request.resource.data.keys().hasAny(['psychologistComment', 'psychologistCommentTime']);
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         resource.data.get('psychologistRef', null) == userRef(request.auth.uid) ||
+         canReadSharedRecord(resource.data.userRef) ||
          isAdmin());
       allow update: if request.auth != null &&
-        (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         (resource.data.get('psychologistRef', null) == userRef(request.auth.uid) &&
+        ((resource.data.userRef == userRef(request.auth.uid) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['emotion', 'description', 'timestamp', 'intensity', 'behaviors'])) ||
+         (canReadSharedRecord(resource.data.userRef) &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['psychologistComment', 'psychologistCommentTime'])));
       allow delete: if request.auth != null &&
@@ -135,14 +120,17 @@ service cloud.firestore {
     match /behavioral_records/{document} {
       allow create: if request.auth != null &&
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
-        sharedRecordPsychologistRefIsValid();
+        sharedRecordPsychologistRefIsValid() &&
+        !request.resource.data.keys().hasAny(['psychologistComment', 'psychologistCommentTime']);
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         resource.data.get('psychologistRef', null) == userRef(request.auth.uid) ||
+         canReadSharedRecord(resource.data.userRef) ||
          isAdmin());
       allow update: if request.auth != null &&
-        (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         (resource.data.get('psychologistRef', null) == userRef(request.auth.uid) &&
+        ((resource.data.userRef == userRef(request.auth.uid) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['date', 'behaviorType', 'value', 'quantity', 'notes', 'createdAt'])) ||
+         (canReadSharedRecord(resource.data.userRef) &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['psychologistComment', 'psychologistCommentTime'])));
       allow delete: if request.auth != null &&
@@ -175,7 +163,7 @@ service cloud.firestore {
           request.resource.data.psychologistRef == /databases/$(database)/documents/users/$(request.auth.uid)));
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         resource.data.get('psychologistRef', null) == userRef(request.auth.uid) ||
+         isAssignedPsychologistByRef(resource.data.userRef) ||
          isAdmin());
       allow update: if request.auth != null &&
         ((resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) &&
@@ -184,7 +172,7 @@ service cloud.firestore {
                 .hasOnly(['title', 'description', 'dueDate', 'status', 'frequency', 'responseType', 'completedTime', 'patientComment', 'patientCommentAt'])
             : request.resource.data.diff(resource.data).affectedKeys()
                 .hasOnly(['status', 'responseText', 'responseValue', 'responseAt', 'completedTime', 'patientComment', 'patientCommentAt']))) ||
-         (resource.data.get('psychologistRef', null) == userRef(request.auth.uid) &&
+         (isAssignedPsychologistByRef(resource.data.userRef) &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['title', 'description', 'dueDate', 'frequency', 'responseType', 'feedback', 'feedbackAt'])));
       allow delete: if request.auth != null &&
@@ -218,7 +206,7 @@ service cloud.firestore {
         request.resource.data.status == 'pendiente';
       allow read: if request.auth != null &&
         (resource.data.patientRef == userRef(request.auth.uid) ||
-         resource.data.get('psychologistRef', null) == userRef(request.auth.uid) ||
+         isAssignedPsychologistByRef(resource.data.patientRef) ||
          isAdmin());
       // The patient may only cancel their own still-pending request; the
       // assigned psychologist may only confirm or decline a pending one.
@@ -227,7 +215,7 @@ service cloud.firestore {
           resource.data.status == 'pendiente' &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
           request.resource.data.status == 'cancelada') ||
-         (resource.data.get('psychologistRef', null) == userRef(request.auth.uid) &&
+         (isAssignedPsychologistByRef(resource.data.patientRef) &&
           resource.data.status == 'pendiente' &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['status', 'respondedAt', 'psychologistNote']) &&
@@ -241,7 +229,19 @@ service cloud.firestore {
     // patient themself -- deliberately no `request.auth.uid == document`
     // clause here, only `isAssignedPsychologist`.
     match /patient_notes/{document} {
-      allow read, write: if isAssignedPsychologist(document);
+      // Legacy notes are sealed to their original author during reassignment.
+      allow read: if request.auth != null &&
+        (resource.data.get('psychologistRef', null) == userRef(request.auth.uid) ||
+         (resource.data.get('psychologistRef', null) == null &&
+          !resource.data.get('sealed', false) && isAssignedPsychologist(document)));
+    }
+
+    match /users/{psychologistUid}/patient_notes/{patientUid} {
+      allow read, delete: if request.auth != null && request.auth.uid == psychologistUid;
+      allow create, update: if request.auth != null &&
+        request.auth.uid == psychologistUid &&
+        isAssignedPsychologistByRef(userRef(patientUid)) &&
+        request.resource.data.keys().hasOnly(['notes']);
     }
 
     // Client-side error/incident log (see lib/utils/error_logging.dart).
@@ -326,8 +326,12 @@ service cloud.firestore {
         request.resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
       allow read: if request.auth != null &&
         (resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid) ||
-         isAssignedPsychologistAndSharing(resource.data.userRef.id));
-      allow update, delete: if request.auth != null &&
+         canReadSharedRecord(resource.data.userRef));
+      allow update: if request.auth != null &&
+        resource.data.userRef == userRef(request.auth.uid) &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['title', 'description', 'targetDate', 'completed', 'completedTime', 'steps']);
+      allow delete: if request.auth != null &&
         resource.data.userRef == /databases/$(database)/documents/users/$(request.auth.uid);
     }
 

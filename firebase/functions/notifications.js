@@ -1,5 +1,7 @@
 const admin = require("firebase-admin");
-const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const { FieldValue } = require("firebase-admin/firestore");
+const { onDocumentWritten, eventContext } = require("./event_context");
+const { createHash } = require("node:crypto");
 
 // Kept short: the client truncates further if it wants, but a notification
 // list row has limited room and Firestore has no reason to store a full
@@ -20,10 +22,10 @@ function truncate(text) {
  * comment, a task update, ...) that must still succeed even if writing the
  * notification itself fails for some reason.
  */
-async function notifyUser(recipientUid, { type, title, body, subjectRef = null, conversationId = null }) {
+async function notifyUser(recipientUid, { type, title, body, subjectRef = null, conversationId = null, notificationId = eventContext.getStore(), throwOnFailure = false }) {
   if (!recipientUid) return;
   try {
-    await admin.firestore().collection("notifications").add({
+    const data = {
       recipientRef: admin.firestore().collection("users").doc(recipientUid),
       type,
       title,
@@ -31,10 +33,19 @@ async function notifyUser(recipientUid, { type, title, body, subjectRef = null, 
       subjectRef,
       conversationId,
       read: false,
-      createdTime: admin.firestore.FieldValue.serverTimestamp(),
-    });
+      createdTime: FieldValue.serverTimestamp(),
+    };
+    const notifications = admin.firestore().collection("notifications");
+    if (notificationId) {
+      const id = createHash("sha256").update(`${notificationId}:${recipientUid}:${type}`).digest("hex");
+      await notifications.doc(id).create(data);
+    } else {
+      await notifications.add(data);
+    }
   } catch (error) {
+    if (error.code === 6 || error.code === "already-exists") return;
     console.error(`[notifyUser] failed for ${recipientUid}:`, error);
+    if (throwOnFailure) throw error;
   }
 }
 

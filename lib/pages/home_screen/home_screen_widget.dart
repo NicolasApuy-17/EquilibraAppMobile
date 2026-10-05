@@ -1,4 +1,5 @@
 import 'dart:async';
+import '/config/support_contacts.dart';
 
 import '/auth/firebase_auth/auth_util.dart';
 import '/backend/backend.dart';
@@ -502,7 +503,7 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                             highlightColor: Colors.transparent,
                                             onTap: () async {
                                               await launchURL(
-                                                  'https://wa.me/message/Q4SUBWYO4CLDF1');
+                                                  fabrizzioWhatsAppUrl);
                                             },
                                             child: wrapWithModel(
                                               model: _model.quickActionModel1,
@@ -510,7 +511,7 @@ class _HomeScreenWidgetState extends State<HomeScreenWidget> {
                                                   safeSetState(() {}),
                                               child: QuickActionWidget(
                                                 target:
-                                                    'https://wa.me/message/Q4SUBWYO4CLDF1',
+                                                    fabrizzioWhatsAppUrl,
                                                 icon: Icon(
                                                   Icons.warning_amber_rounded,
                                                   color: FlutterFlowTheme.of(

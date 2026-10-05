@@ -3,6 +3,8 @@ import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '/components/privacy_links.dart';
+import '/config/legal_links.dart';
 
 /// Static "Términos y Condiciones" + "Política de Privacidad" page, linked
 /// from the welcome, login and create-account screens (pre-authentication,
@@ -60,7 +62,7 @@ class TermsPrivacyWidget extends StatelessWidget {
                     const EdgeInsetsDirectional.fromSTEB(24.0, 0.0, 24.0, 32.0),
                 children: [
                   Text(
-                    'Última actualización: septiembre de 2026',
+                    'Última actualización: octubre de 2026',
                     style: theme.bodySmall.override(
                       font: GoogleFonts.outfit(),
                       color: theme.secondaryText,
@@ -91,6 +93,8 @@ class TermsPrivacyWidget extends StatelessWidget {
                     'opción "Ayuda urgente" de la app para ver líneas de '
                     'apoyo.',
                   ),
+                  const _SubTitle('Aviso de salud'),
+                  const _Paragraph(healthDisclaimer),
                   const _SubTitle('3. Cuentas de usuario'),
                   const _Paragraph(
                     'Eres responsable de mantener la confidencialidad de tu '
@@ -169,9 +173,13 @@ class TermsPrivacyWidget extends StatelessWidget {
                   const _Paragraph(
                     'Puedes acceder, corregir o eliminar tu información desde '
                     'tu perfil, o solicitando la eliminación de tu cuenta y '
-                    'todos tus datos escribiéndonos a través de "Contacto de '
-                    'Apoyo" dentro de la app.',
+                    'los datos asociados desde "Privacidad y Datos" → '
+                    '"Solicitar eliminación de cuenta", o mediante nuestra '
+                    'página pública de eliminación de cuenta. Desactivar la '
+                    'cuenta no equivale a eliminarla.',
                   ),
+                  const SizedBox(height: 12.0),
+                  const PrivacyLinks(),
                   const _SubTitle('6. Conservación de datos'),
                   const _Paragraph(
                     'Conservamos tu información mientras tu cuenta esté '

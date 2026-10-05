@@ -42,42 +42,26 @@ class _AvancesTabState extends State<AvancesTab> {
     _future = _load();
   }
 
-  // One-time fetches, not live `.snapshots()` listeners: `records`,
-  // `behavioral_records` and `tasks` reads are gated by
-  // `isAssignedPsychologist()`, a security rule that does a `get()` on the
-  // patient's `users/{uid}` doc -- and that same doc gets written to (its
-  // `lastActivityAt`) by a Cloud Function trigger every time one of those
-  // is created. A live listener whose rule depends on a document that gets
-  // rewritten moments later reliably shows the correct data for an
-  // instant, then silently drops to empty with no error (see
-  // registros_tab.dart for how this was confirmed). Refreshed manually
-  // instead: on pull-to-refresh, and whenever the period filter changes.
-  //
-  // Each query also filters on `psychologistRef` (our own ref), not just
-  // the patient's `userRef`/`patientRef` -- a `list` query's security rule
-  // can only read `resource.data` fields that are *also* constrained by
-  // that query's own `where` clauses, and the read rule for these
-  // collections checks `psychologistRef`. Without this second filter,
-  // Firestore treats that field as undefined while proving the query safe
-  // and denies the whole read (confirmed with the Firestore Rules
-  // emulator -- see registros_tab.dart). Multiple equality filters like
-  // this don't need a composite index.
+  // Preserve manual refresh. Scope each query to one patient so the rules
+  // can validate their current assignment and live privacy preference.
   Future<_AvancesData> _load() async {
     final patientRef = widget.patient.reference;
     final myRef = currentUserReference;
+    final profile = await patientRef.get();
+    final sharing = (profile.data()
+            as Map<String, dynamic>?)?['shareDataWithPsychologist'] !=
+        false;
     final results = await Future.wait([
-      queryRecordsRecordOnce(
-          queryBuilder: (q) => q
-              .where('userRef', isEqualTo: patientRef)
-              .where('psychologistRef', isEqualTo: myRef)),
-      queryBehavioralRecordsRecordOnce(
-          queryBuilder: (q) => q
-              .where('userRef', isEqualTo: patientRef)
-              .where('psychologistRef', isEqualTo: myRef)),
+      sharing
+          ? queryRecordsRecordOnce(
+              queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef))
+          : Future.value(<RecordsRecord>[]),
+      sharing
+          ? queryBehavioralRecordsRecordOnce(
+              queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef))
+          : Future.value(<BehavioralRecordsRecord>[]),
       queryTasksRecordOnce(
-          queryBuilder: (q) => q
-              .where('userRef', isEqualTo: patientRef)
-              .where('psychologistRef', isEqualTo: myRef)),
+          queryBuilder: (q) => q.where('userRef', isEqualTo: patientRef)),
       queryActivityAssignmentsRecordOnce(
           queryBuilder: (q) => q
               .where('patientRef', isEqualTo: patientRef)
@@ -114,10 +98,12 @@ class _AvancesTabState extends State<AvancesTab> {
         final end = startThisWeek.subtract(const Duration(days: 1));
         return DateTimeRange(start: start, end: end);
       case _Period.lastMonth:
-        return DateTimeRange(start: today.subtract(const Duration(days: 30)), end: today);
+        return DateTimeRange(
+            start: today.subtract(const Duration(days: 30)), end: today);
       case _Period.custom:
         return _customRange ??
-            DateTimeRange(start: today.subtract(const Duration(days: 7)), end: today);
+            DateTimeRange(
+                start: today.subtract(const Duration(days: 7)), end: today);
     }
   }
 
@@ -141,7 +127,8 @@ class _AvancesTabState extends State<AvancesTab> {
     if (date == null) return false;
     final day = DateTime(date.year, date.month, date.day);
     final range = _range;
-    final start = DateTime(range.start.year, range.start.month, range.start.day);
+    final start =
+        DateTime(range.start.year, range.start.month, range.start.day);
     final end = DateTime(range.end.year, range.end.month, range.end.day);
     return !day.isBefore(start) && !day.isAfter(end);
   }
@@ -188,14 +175,16 @@ class _AvancesTabState extends State<AvancesTab> {
               snapshot,
               errorText: 'No se pudo cargar el avance del consultante.',
               (data) => _AvancesContent(
-                records: data.records.where((r) => _inRange(r.timestamp)).toList(),
+                records:
+                    data.records.where((r) => _inRange(r.timestamp)).toList(),
                 behaviors:
                     data.behaviors.where((r) => _inRange(r.createdAt)).toList(),
                 tasks: data.tasks
                     .where((t) => _inRange(t.assignedDate ?? t.createdTime))
                     .toList(),
-                activities:
-                    data.activities.where((a) => _inRange(a.assignedTime)).toList(),
+                activities: data.activities
+                    .where((a) => _inRange(a.assignedTime))
+                    .toList(),
               ),
             ),
           ),
@@ -277,7 +266,8 @@ class _AvancesContent extends StatelessWidget {
     final behaviorCounts = <String, int>{};
     for (final b in behaviors) {
       if (b.behaviorType.isEmpty) continue;
-      behaviorCounts[b.behaviorType] = (behaviorCounts[b.behaviorType] ?? 0) + 1;
+      behaviorCounts[b.behaviorType] =
+          (behaviorCounts[b.behaviorType] ?? 0) + 1;
     }
     final sortedBehaviors = behaviorCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -322,13 +312,17 @@ class _AvancesContent extends StatelessWidget {
         if (sortedEmotions.isEmpty)
           const EmptyHint('Sin registros emocionales en este período.')
         else
-          _BarList(entries: sortedEmotions, color: FlutterFlowTheme.of(context).primary),
+          _BarList(
+              entries: sortedEmotions,
+              color: FlutterFlowTheme.of(context).primary),
         const SizedBox(height: 24.0),
         SectionTitle('Conductas registradas'),
         if (sortedBehaviors.isEmpty)
           const EmptyHint('Sin registros de conducta en este período.')
         else
-          _BarList(entries: sortedBehaviors, color: FlutterFlowTheme.of(context).warning),
+          _BarList(
+              entries: sortedBehaviors,
+              color: FlutterFlowTheme.of(context).warning),
       ],
     );
   }
@@ -342,11 +336,13 @@ class _BarList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxValue = entries.map((e) => e.value).reduce((a, b) => a > b ? a : b);
+    final maxValue =
+        entries.map((e) => e.value).reduce((a, b) => a > b ? a : b);
     return Column(
       children: entries
           .map((entry) => Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 10.0),
+                padding:
+                    const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 10.0),
                 child: Row(
                   children: [
                     SizedBox(
@@ -388,7 +384,8 @@ class _BarList extends StatelessWidget {
                     Text(
                       '${entry.value}',
                       style: FlutterFlowTheme.of(context).bodySmall.override(
-                            font: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                            font:
+                                GoogleFonts.outfit(fontWeight: FontWeight.bold),
                             color: FlutterFlowTheme.of(context).primaryText,
                             letterSpacing: 0.0,
                             fontWeight: FontWeight.bold,

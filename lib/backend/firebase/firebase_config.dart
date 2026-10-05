@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 
 Future initFirebase() async {
   if (kIsWeb) {
@@ -14,5 +15,12 @@ Future initFirebase() async {
             measurementId: "G-4QWH9XZ6V8"));
   } else {
     await Firebase.initializeApp();
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: kReleaseMode
+            ? AndroidProvider.playIntegrity
+            : AndroidProvider.debug,
+      );
+    }
   }
 }

@@ -1,0 +1,21 @@
+{
+  "app": "projects/229293546081/apps/1:229293546081:android:cbcaa00183f9b88d62a820",
+  "appCheckStatus": 200,
+  "services": {},
+  "emailEnabled": true,
+  "androidKeyRestrictions": {},
+  "pages": {
+    "https://www.equilibra.com.pe/eliminar-cuenta/": {
+      "status": 404,
+      "finalUrl": "https://equilibra.com.pe/eliminar-cuenta/",
+      "title": "Page not found - Equilibra",
+      "bodyCharacters": 127693
+    },
+    "https://www.equilibra.com.pe/politica-de-privacidad-app/": {
+      "status": 404,
+      "finalUrl": "https://equilibra.com.pe/politica-de-privacidad-app/",
+      "title": "Page not found - Equilibra",
+      "bodyCharacters": 127693
+    }
+  }
+}

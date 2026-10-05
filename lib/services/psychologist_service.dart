@@ -35,8 +35,9 @@ class PsychologistService {
     required String password,
   }) async {
     try {
-      final result =
-          await _functions.httpsCallable('createPsychologist').call(<String, dynamic>{
+      final result = await _functions
+          .httpsCallable('createPsychologist')
+          .call(<String, dynamic>{
         'displayName': displayName,
         'email': email,
         'specialty': specialty,
@@ -90,7 +91,9 @@ class PsychologistService {
     required String psychologistId,
   }) async {
     try {
-      await _functions.httpsCallable('adminAssignPsychologist').call(<String, dynamic>{
+      await _functions
+          .httpsCallable('adminAssignPsychologist')
+          .call(<String, dynamic>{
         'patientId': patientId,
         'psychologistId': psychologistId,
       });
@@ -112,7 +115,8 @@ class PsychologistService {
     required String newRole,
   }) async {
     try {
-      final result = await _functions.httpsCallable('setUserRole').call(<String, dynamic>{
+      final result =
+          await _functions.httpsCallable('setUserRole').call(<String, dynamic>{
         'uid': uid,
         'newRole': newRole,
       });
@@ -131,7 +135,8 @@ class PsychologistService {
   /// underlying Firebase Auth user too (not just a Firestore flag), so a
   /// deactivated account can't sign in again or keep an existing session
   /// alive past its next token refresh.
-  Future<void> setAccountActive({required String uid, required bool active}) async {
+  Future<void> setAccountActive(
+      {required String uid, required bool active}) async {
     try {
       await _functions.httpsCallable('setAccountActive').call(<String, dynamic>{
         'uid': uid,
@@ -173,8 +178,9 @@ class PsychologistService {
   /// counts from `adminBackfillPsychologistRefs`.
   Future<Map<String, dynamic>> backfillPsychologistRefs() async {
     try {
-      final result =
-          await _functions.httpsCallable('adminBackfillPsychologistRefs').call();
+      final result = await _functions
+          .httpsCallable('adminBackfillPsychologistRefs')
+          .call();
       final data = result.data;
       return data is Map ? Map<String, dynamic>.from(data) : {};
     } on FirebaseFunctionsException catch (e) {
@@ -191,6 +197,8 @@ class PsychologistService {
   Future<void> sendConversationMessage({
     required String conversationId,
     required String text,
+    String? messageId,
+    bool resolvePatientAlias = true,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) {
@@ -202,6 +210,8 @@ class PsychologistService {
           .call(<String, dynamic>{
         'conversationId': conversationId,
         'text': trimmed,
+        if (messageId != null) 'messageId': messageId,
+        'resolvePatientAlias': resolvePatientAlias,
       });
     } on FirebaseFunctionsException catch (e) {
       throw PsychologistServiceException(_messageForCode(e.code, e.message));
@@ -219,13 +229,15 @@ class PsychologistService {
       case 'permission-denied':
         return serverMessage ?? 'No tienes permiso para realizar esta acción.';
       case 'invalid-argument':
-        return serverMessage ?? 'Revisa los datos ingresados e intenta nuevamente.';
+        return serverMessage ??
+            'Revisa los datos ingresados e intenta nuevamente.';
       case 'already-exists':
         return serverMessage ?? 'Ese correo electrónico ya está registrado.';
       case 'not-found':
         return serverMessage ?? 'No se encontró lo que buscabas.';
       case 'failed-precondition':
-        return serverMessage ?? 'No se pudo completar la acción en este momento.';
+        return serverMessage ??
+            'No se pudo completar la acción en este momento.';
       case 'unavailable':
       case 'internal':
         return 'El servicio no está disponible en este momento. Inténtalo nuevamente.';

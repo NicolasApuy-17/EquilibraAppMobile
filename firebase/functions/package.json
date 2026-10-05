@@ -17,6 +17,9 @@
     "eslint-plugin-promise": "^4.2.1"
   },
   "scripts": {
+    "test": "node --test test/review.unit.test.js test/account_actions.unit.test.js",
+    "test:emulator": "node --test --test-concurrency=1 test/review.integration.test.js test/storage.integration.test.js test/account_deletion.integration.test.js",
+    "test:account-actions:emulator": "node --test test/account_actions.integration.test.js",
     "lint": "eslint --max-warnings=0 .",
     "serve": "firebase -P equilibra-w5rl2h emulators:start --only functions",
     "shell": "firebase -P equilibra-w5rl2h functions:shell",
